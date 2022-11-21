@@ -1,0 +1,232 @@
+/*
+* Ecoflow
+*
+* Description:
+* This Hubitat driver polls an EcoFlow Battery -
+* This is NOT a local pull driver, and an API link is needed from EcoFlow
+*
+* Features List:
+* Pulls 4 variables from the Ecoflow battery
+* Input Watts : 
+* Output Watts : 
+* State of Charge : 
+* Time Remaining (battery last time if negitive) : 
+* Time Remaining (Battery charge time if positive) 
+*
+*
+* Instructions:
+* 1. send battery serial number to Ecoflow via an email to cust service and request a curl API link
+* 2. load this driver into Hubitat
+* 3. load a virtual device and set the driver to ecoflow
+* 4. input your serial number, appkey, and secret appkey
+*
+* Licensing:
+* This driver was created by modifying code written by David Snell for a Neurio Power Meter.
+* Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+* in compliance with the License. You may obtain a copy of the License at: http://www.apache.org/licenses/LICENSE-2.0
+* Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
+* on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+* for the specific language governing permissions and limitations under the License.
+*
+* Version Control:
+* 0.4 - General clean up - More descriptive variable names.
+* 0.3 - corrected error by removing CheckForUpdate call at the end of updated() block - removed default ser# from the input section
+* 0.2 - added error processing with switch() conditional commands.
+* 0.1 - working copy with no error processing
+* 0.0 - Based on Dave Snell's Neurio Driver
+*
+* thanks out to @snell for answering my daily how-to emails.
+*/
+
+
+metadata{
+	definition ( name: "Ecoflow", namespace: "Dimond", author: "Darryl Dimond" ) {
+		// Attempting to indicate what capabilities the device should be capable of
+		capability "Sensor"
+		capability "Refresh"
+		capability "PowerMeter"
+        capability "EnergyMeter"
+		
+        attribute "timestamp", "string" // timestamp is when the last reading was polled from the Ecoflow
+        attribute "DataAsOf", "string" // Last time Hubitat updated the data from the Ecoflow
+        
+        // Direct matches for Ecoflow names
+         attribute "code", "string"
+        attribute "message", "string"
+        attribute "data", "string"
+        attribute "State of Charge", "number"
+        attribute "Time Remaining", "number"
+        attribute "Output Watts", "number"
+        attribute "Input Watts", "number"
+        attribute "Tile", "string"; // Ex: "[font size='2'][b]Voltage:[/b] ${ voltage }V[/br][/font]"
+                 
+	}
+	preferences{
+		section{
+            input "ecoflowser", "text", required: true, title: "<font color='FF0000'><b>Ecoflow Serial Number</b></font>"
+            input "appkey1", "text", required: true, title: "<font color='FF0000'><b>appkey</b></font>"
+            input "appkey2", "text", required: true, title: "<font color='FF0000'><b>secretKey</b></font>"
+            input( type: "enum", name: "RefreshRate", title: "Data Refresh Rate", required: true, multiple: false, options: [ "1 minute", "5 minutes", "15 minutes", "30 minutes", "60 minutes" ], defaultValue: "5 minutes" )
+            input( type: "enum", name: "LogType", title: "<b>Enable Logging?</b>", required: true, multiple: false, options: [ "None", "Info", "Debug", "Trace" ], defaultValue: "Info" )
+            input( name: "TileTemplate", type: "string", title: "<b>Tile Template</b>", description: "<font size='2'>Ex: [b]Remaining Minutes:[/b] \${ remainMins }V[/br]</font>", defaultValue: "");
+         }
+	}
+}
+
+// updated is called whenever device parameters are saved
+// It sets the current version of the driver and sets some basic settings
+def updated(){
+	Logging( "Updated", 2 )
+	state.'Driver Version' = "0.4"
+	state.'Driver Name' = "Ecoflow"
+	
+	// Check what the refresh rate is set for then run it
+	if( RefreshRate == "1 minute" ){
+		runEvery1Minute( refresh )
+	}
+	if( RefreshRate == "5 minutes" ){
+		runEvery5Minutes( refresh )
+	}
+	if( RefreshRate == "15 minutes" ){
+		runEvery15Minutes( refresh )
+	}
+	if( RefreshRate == "30 minutes" ){
+		runEvery30Minutes( refresh )
+	}
+	if( RefreshRate == "60 minutes" ){
+		runEvery1Hour( refresh )
+	}
+    Logging( "Refresh rate: ${ RefreshRate }", 4 )
+}
+
+// refresh does not do much besides increment the number of updates
+def refresh(){
+    PollEcoflow()
+}
+
+//Poll Ecoflow for data 
+def PollEcoflow() {
+    Logging( "Attempting to get data from Ecoflow", 4 )
+    def JSONParams
+    JSONParams = [
+        uri: "https://api.ecoflow.com/iot-service/open/api/device/queryDeviceQuota?sn=${ecoflowser}",
+		requestContentType: 'application/json',
+		contentType: 'application/json',
+      headers: [ "appKey": "${appkey1}", "secretKey": "${appkey2}"]
+     ]
+      asynchttpGet( "GetEcoflow", JSONParams )
+}
+ // Handles the response from Ecoflow
+def GetEcoflow( resp, data ) {
+ switch( resp.getStatus() ){
+		case 200:
+		    Logging( "Raw response = ${ resp.data }", 4 )
+		    Json = parseJson( resp.data )
+	       	ParseJSON( Json )
+        break
+		case 401:
+		    Logging( "Unauthorized error connecting to Ecoflow.", 5 )
+		    break
+		default:
+		    Logging( "Error ${ resp.status } connecting to Ecoflow" , 5 )
+		    ProcessEvent( "message", resp.getStatus())
+            break
+	}
+}
+// Parse the data returned, output events and populate attributes as needed
+def ParseJSON( Json ){
+	// If there are any values returned, process them
+   if( Json != null ){
+        def NumberOfValuesAll = Json.size() as Integer
+        ProcessEvent( "code", Json.code )
+        ProcessEvent( "message", Json.message )
+     // check if any error codes from ecoflow connection - continue with Parse only if data pull was successful
+       switch( Json.code ){
+	   	case "0":
+	    	  ProcessEvent( "data", Json.data )
+              ProcessEvent( "Time Remaining", Json.data.remainTime )
+              ProcessEvent( "Output Watts", Json.data.wattsOutSum )
+              ProcessEvent( "Input Watts", Json.data.wattsInSum ) 
+              ProcessEvent( "State of Charge", Json.data.soc)
+              ProcessEvent( "DataAsOf", "${ new Date().format( "MM/dd/yy HH:mm" ) }" )
+              Logging( "Updated as of: ${ new Date().format( "MM/dd/yy HH:mm" ) }", 2 )
+         break
+		case "6047":
+		    Logging( "error 6047 - device does not exist - serial number mismatch connecting to Ecoflow.", 5 )
+		    break
+		case "6054":
+		    Logging( "error 6054 - secretKey or appkey error when connecting to Ecoflow.", 5 )
+		    break
+     case "1006":
+		    Logging( "error 1006 - serial number sent to Ecoflow was empty.", 5 )
+		    break
+     default:
+		    Logging( "Error ${ resp.status } connecting to Ecoflow" , 5 )
+		    break
+         }
+    } else {
+        Logging( "No data reported", 3 )
+    }
+}
+// Process data to check against current state value and then send an event if it has changed
+def ProcessEvent( Variable, Value, Unit = null ){
+        if( state."${ Variable }" != Value ){
+        state."${ Variable }" = Value
+        if( Unit != null ){
+            Logging( "Event: ${ Variable } = ${ Value }${ Unit }", 4 )
+            sendEvent( name: "${ Variable }", value: Value, unit: Unit, isStateChanged: true )
+        } else {
+            Logging( "Event: ${ Variable } = ${ Value }", 4 )
+            sendEvent( name: "${ Variable }", value: Value, isStateChanged: true )
+        }
+        updateHtml( "${ Value }" )
+    }
+}
+// Process data to check against current state value and then send an event if it has changed
+def ProcessState( Variable, Value ){
+    if( state."${ Variable }" != Value ){
+        Logging( "State: ${ Variable } = ${ Value }", 4 )
+        state."${ Variable }" = Value
+        updateHtml( "${ Value }" )
+    }
+}
+ // HTML Template method created by @mircolino
+private void updateHtml( String val ){
+    if( settings.htmlTemplate ){
+        // Create special compund/html tile
+        val = settings.htmlTemplate.toString().replaceAll( ~/\$\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}/ ) { java.util.ArrayList m -> device.currentValue("${ m [ 1 ] }").toString() }
+        if( device.currentValue( "html" ).toString() != val ){
+            sendEvent( name: "html", value: val )
+        }
+    }
+}
+private void UpdateTile(){
+    if( settings.TileTemplate ){
+        def val = settings.TileTemplate.toString().replaceAll( "\\[", "<" )
+        val = val.replaceAll( "\\]", ">" )
+        val = val.replaceAll( ~/\$\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}/ ) { java.util.ArrayList m -> device.currentValue("${ m [ 1 ] }").toString() }
+        if( device.currentValue( "Tile" ).toString() != val ){
+            sendEvent( name: "Tile", value: val )
+        }
+    }
+}
+// installed is called when the device is installed, all it really does is run updated
+def installed(){
+	Logging( "Installed", 2 )
+	updated()
+}
+
+// Handles whether logging is enabled and thus what to put there.
+def Logging( LogMessage, LogLevel ){
+	// Add all messages as info logging
+    if( ( LogLevel == 2 ) && ( LogType != "None" ) ){
+        log.info( "${ device.displayName } - ${ LogMessage }" )
+    } else if( ( LogLevel == 3 ) && ( ( LogType == "Debug" ) || ( LogType == "Trace" ) ) ){
+        log.debug( "${ device.displayName } - ${ LogMessage }" )
+    } else if( ( LogLevel == 4 ) && ( LogType == "Trace" ) ){
+        log.trace( "${ device.displayName } - ${ LogMessage }" )
+    } else if( LogLevel == 5 ){
+        log.error( "${ device.displayName } - ${ LogMessage }" )
+    }
+}
+
