@@ -29,6 +29,7 @@
 * for the specific language governing permissions and limitations under the License.
 *
 * Version Control:
+* 0.5 - Added code 6012 device offlline and Device status varaible. Cleared out variables if battery is offline.
 * 0.4 - General clean up - More descriptive variable names.
 * 0.3 - corrected error by removing CheckForUpdate call at the end of updated() block - removed default ser# from the input section
 * 0.2 - added error processing with switch() conditional commands.
@@ -52,6 +53,7 @@ metadata{
         
         // Direct matches for Ecoflow names
          attribute "code", "string"
+        attribute  "Status", "string"
         attribute "message", "string"
         attribute "data", "string"
         attribute "State of Charge", "number"
@@ -77,7 +79,7 @@ metadata{
 // It sets the current version of the driver and sets some basic settings
 def updated(){
 	Logging( "Updated", 2 )
-	state.'Driver Version' = "0.4"
+	state.'Driver Version' = "0.5"
 	state.'Driver Name' = "Ecoflow"
 	
 	// Check what the refresh rate is set for then run it
@@ -140,7 +142,7 @@ def ParseJSON( Json ){
         def NumberOfValuesAll = Json.size() as Integer
         ProcessEvent( "code", Json.code )
         ProcessEvent( "message", Json.message )
-     // check if any error codes from ecoflow connection - continue with Parse only if data pull was successful
+        // check if any error codes from ecoflow connection - continue with Parse only if data pull was successful
        switch( Json.code ){
 	   	case "0":
 	    	  ProcessEvent( "data", Json.data )
@@ -148,21 +150,35 @@ def ParseJSON( Json ){
               ProcessEvent( "Output Watts", Json.data.wattsOutSum )
               ProcessEvent( "Input Watts", Json.data.wattsInSum ) 
               ProcessEvent( "State of Charge", Json.data.soc)
+              ProcessEvent ("Status", "Online")
               ProcessEvent( "DataAsOf", "${ new Date().format( "MM/dd/yy HH:mm" ) }" )
               Logging( "Updated as of: ${ new Date().format( "MM/dd/yy HH:mm" ) }", 2 )
          break
 		case "6047":
 		    Logging( "error 6047 - device does not exist - serial number mismatch connecting to Ecoflow.", 5 )
-		    break
+            ProcessEvent("Status", "offline")   
+            break
 		case "6054":
 		    Logging( "error 6054 - secretKey or appkey error when connecting to Ecoflow.", 5 )
+           ProcessEvent("Status", "Offline")
 		    break
      case "1006":
 		    Logging( "error 1006 - serial number sent to Ecoflow was empty.", 5 )
+           ProcessEvent("Status", "Offline")
 		    break
+     case "6012":
+           Logging( "error 6012 - Device is reported to be offline.", 5 )
+           ProcessEvent("Status", "Offline")
+           ProcessEvent( "data", ""  )
+           ProcessEvent( "Time Remaining", "0" )
+           ProcessEvent( "Output Watts", "0" )
+           ProcessEvent( "Input Watts", "0" ) 
+           ProcessEvent( "State of Charge", "0" ) 
+           break
      default:
-		    Logging( "Error ${ resp.status } connecting to Ecoflow" , 5 )
-		    break
+	       Logging( "Error ${ resp.status } connecting to Ecoflow" , 5 )
+           ProcessEvent("Status", "Offline")
+		   break
          }
     } else {
         Logging( "No data reported", 3 )
@@ -229,4 +245,3 @@ def Logging( LogMessage, LogLevel ){
         log.error( "${ device.displayName } - ${ LogMessage }" )
     }
 }
-
