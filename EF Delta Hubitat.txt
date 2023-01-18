@@ -1,8 +1,8 @@
 /**
- *  ****************  ECOFLOW DELTA SERIES MQTT DRIVER -   ****************
+ *  ****************  ECOFLOW DELTA PRO / DELTA 2 & RIVER SERIES MQTT DRIVER -   ****************
  *                    Work in Process - HTML tile code not working
- *    
- *
+ *               
+ *                          
  *  D. Dimond 01/16/2023
 
  *  Design Usage:
@@ -27,6 +27,9 @@
  *
  *
  *  Changes:
+ *  0.0.14   added log note on error when driver settings are not saved.
+ *  0.0.13   add draft river and delta pro test code - added river / deltapro and delta2 model selection to user inputs
+ *  0.0.12   add rough code for river control of AC and LED light via USB switch
  *  0.0.11   added code to send capabilities for Battery Charge Level, PowerMeter AC Output Watts and Temperature of Main Battery Cell.
  *  0.0.10   only current device attributes that have changed are updated - added time out for deltaflag - both items will reduce data load
  *  0.0.9    add data change flag option to help track down data points names to add to metadata - added refreshdata button
@@ -235,7 +238,269 @@ Delta 2 data list
     USBoutput : 0
     mppt.faultCode : 0
 
+River data list
 
+        
+	    	"inv.errCode": 0,
+	    	"inv.outputWatts": 0,
+		"inv.invOutFreq": 0,
+		"inv.chargerType": 255,
+		"inv.fanState": 0,
+		"latestTimeStamp": 1673971927793,
+		"inv.inTemp": 37,
+	    	"inv.cfgAcEnabled": 0,
+	    	"inv.cfgAcXboost": 1,
+	    	"inv.outTemp": 27,
+		"inv.invType": 0,
+		"inv.invOutVol": 0,
+		"inv.invInAmp": 0,
+	    	"inv.inputWatts": 0,
+		"inv.invInFreq": 60,
+             pd.wattsInSum": 131,
+        "pd.dcInUsedTime": 158,
+        "pd.chgPowerDC": 8,
+        "pd.dsgPowerDC": 139,
+        "pd.model": 2,
+            "pd.ledState": 0, << 0-off, 1-Normal, 2-bright, 3-SOS/Signal
+        "pd.beepState": 0,
+        "pd.remainTime": 5999,
+        "pd.usb3Watts": 0,
+        "pd.typecUsedTime": 2460,
+        "pd.typecWatts": 0,
+        "pd.usbqcUsedTime": 27542,
+        "pd.chgSunPower": 153,
+        "pd.wattsOutSum": 131,
+        "pd.carSwitch": 0,
+        "pd.carTemp": 20,
+        "pd.usbUsedTime": 10102,
+        "pd.mpptUsedTime": 4358,
+        "pd.ledWatts": 0,
+        "pd.usb1Watts": 0,
+        "pd.standByMode": 120,
+        "pd.dsgPowerAC": 393911,
+        "pd.chgPowerAC": 405979,
+        "pd.errCode": 0,
+        "pd.bmsSlave": 1,
+        "pd.sysVer": 16843540,
+        "pd.carWatts": 0,
+        "pd.carUsedTime": 2362,
+        "pd.usb2Watts": 0,
+        "pd.soc": 99,
+        "pd.typecTemp": 22,
+        "pd.invUsedTime": 14132865    
+
+
+Delta pro data list
+
+ bmsMaster.amp : -270 
+bmsMaster.bmsFault : 0 
+bmsMaster.bqSysStatReg : 128 
+bmsMaster.cellId : 2 
+bmsMaster.cycles : 36 
+bmsMaster.designCap : 80000 
+bmsMaster.errCode : 6 
+bmsMaster.f32ShowSoc : 97.773994 
+bmsMaster.fullCap : 68499 
+bmsMaster.inputWatts : 0 
+bmsMaster.maxCellTemp : 16 
+bmsMaster.maxCellVol : 3333 
+bmsMaster.maxMosTemp : 16 
+bmsMaster.minCellTemp : 15 
+bmsMaster.minCellVol : 3318 
+bmsMaster.minMosTemp : 16 
+bmsMaster.num : 0 
+bmsMaster.openBmsIdx : 1 
+bmsMaster.outputWatts : 0 
+bmsMaster.remainCap : 66974 
+bmsMaster.remainTime : 0 
+bmsMaster.soc : 98 
+bmsMaster.soh : 0 
+bmsMaster.sysVer : 16843029 
+bmsMaster.tagChgAmp : 48000 
+bmsMaster.temp : 15 
+bmsMaster.type : 1 
+bmsMaster.vol : 49969 
+bmsSlave1.amp : 0 
+bmsSlave1.bmsFault : 0 
+bmsSlave1.bqSysStatReg : 128 
+bmsSlave1.cellId : 2 
+bmsSlave1.cycles : 29 
+bmsSlave1.designCap : 80000 
+bmsSlave1.errCode : 6 
+bmsSlave1.f32ShowSoc : 100 
+bmsSlave1.fullCap : 63544 
+bmsSlave1.inputWatts : 0 
+bmsSlave1.maxCellTemp : 13 
+bmsSlave1.maxCellVol : 3345 
+bmsSlave1.maxMosTemp : 14 
+bmsSlave1.minCellTemp : 13 
+bmsSlave1.minCellVol : 3336 
+bmsSlave1.minMosTemp : 14 
+bmsSlave1.num : 1 
+bmsSlave1.openBmsIdx : 1 
+bmsSlave1.outputWatts : 0 
+bmsSlave1.remainCap : 64491 
+bmsSlave1.remainTime : 12898 
+bmsSlave1.soc : 100 
+bmsSlave1.soh : 0 
+bmsSlave1.sysVer : 16777493 
+bmsSlave1.tagChgAmp : 48000 
+bmsSlave1.temp : 13 
+bmsSlave1.type : 1 
+bmsSlave1.vol : 50166 
+cdtype : 3 
+inv.acDipSwitch : 2 
+inv.acInAmp : 0 
+inv.acInFreq : 60 
+inv.acInVol : 122975 
+inv.acPassByAutoEn : 0 
+inv.cfgAcEnabled : 1 
+inv.cfgAcOutFreq : 2 
+inv.cfgAcOutVoltage : 120000 
+inv.cfgAcWorkMode : 0 
+inv.cfgAcXboost : 0 
+inv.cfgFastChgWatts : 0 
+inv.cfgSlowChgWatts : 1800 
+inv.cfgStandbyMin : 0 
+inv.chargerType : 0 
+inv.chgPauseFlag : 0 
+inv.dcInAmp : 0 
+inv.dcInTemp : 25 
+inv.dcInVol : 0 
+inv.dischargeType : 1 
+inv.errCode : 0 
+inv.fanState : 0 
+inv.inputWatts : 0 
+inv.invOutAmp : 191 
+inv.invOutFreq : 60 
+inv.invOutVol : 122408 
+inv.invType : 0 
+inv.outputWatts : 0 
+inv.outTemp : 20 
+inv.sysVer : 33620303 
+mppt.carOutAmp : 0 
+mppt.carOutVol : 0 
+mppt.carOutWatts : 0 
+mppt.carState : 0 
+mppt.carTemp : 0 
+mppt.cfgChgType : 0 
+mppt.cfgDcChgCurrent : 8000 
+mppt.chgPauseFlag : 0 
+mppt.chgState : 0 
+mppt.chgType : 0 
+mppt.dc24vState : 1 
+mppt.dc24vTemp : 26 
+mppt.dcdc12vAmp : 0 
+mppt.dcdc12vVol : 0 
+mppt.dcdc12vWatts : 0 
+mppt.faultCode : 0 
+mppt.inAmp : 0 
+mppt.inVol : 0 
+mppt.inWatts : 0 
+mppt.mpptTemp : 23 
+mppt.outAmp : 2 
+mppt.outVol : 490 
+mppt.outWatts : 13 
+mppt.swVer : 50397216 
+mppt.xt60ChgType : 0 
+pd.beepState : 1 
+pd.carState : 0 
+pd.carTemp : 0 
+pd.carUsedTime : 825546 
+pd.carWatts : 0 
+pd.chgPowerAc : 246460 
+pd.chgPowerDc : 0 
+pd.chgSunPower : 10038 
+pd.dcInUsedTime : 0 
+pd.dcOutState : 1 
+pd.dsgPowerAc : 152801 
+pd.dsgPowerDc : 7610 
+pd.errCode : 0 
+pd.ext3p8Port : 0 
+pd.ext4p8Port : 1 
+pd.extRj45Port : 0 
+pd.iconAcFreqMode : 0 
+pd.iconAcFreqState : 0 
+pd.iconBmsErrMode : 0 
+pd.iconBmsErrState : 0 
+pd.iconBmsParallelMode : 0 
+pd.iconBmsParallelState : 0 
+pd.iconBtMode : 0 
+pd.iconBtState : 0 
+pd.iconCarMode : 1 
+pd.iconCarState : 0 
+pd.iconChgStationMode : 0 
+pd.iconChgStationState : 0 
+pd.iconCoGasMode : 0 
+pd.iconCoGasState : 0 
+pd.iconEcoMode : 0 
+pd.iconEcoState : 0 
+pd.iconFactoryMode : 0 
+pd.iconFactoryState : 0 
+pd.iconFanMode : 0 
+pd.iconFanState : 0 
+pd.iconGasGenMode : 0 
+pd.iconGasGenState : 0 
+pd.iconHiTempMode : 0 
+pd.iconHiTempState : 0 
+pd.iconInvParallelMode : 1 
+pd.iconInvParallelState : 0 
+pd.iconLowTempMode : 0 
+pd.iconLowTempState : 0 
+pd.iconOverloadMode : 0 
+pd.iconOverloadState : 0 
+pd.iconPackHeaterMode : 0 
+pd.iconPackHeaterState : 0 
+pd.iconRcMode : 0 
+pd.iconRcState : 0 
+pd.iconRechgTimeMode : 0 
+pd.iconRechgTimeState : 0 
+pd.iconSocUpsMode : 1 
+pd.iconSocUpsState : 0 
+pd.iconSolarBracketMode : 0 
+pd.iconSolarBracketState : 0 
+pd.iconSolarPanelMode : 0 
+pd.iconSolarPanelState : 0 
+pd.iconTransSwMode : 0 
+pd.iconTransSwState : 0 
+pd.iconTypecMode : 0 
+pd.iconTypecState : 0 
+pd.iconUsbMode : 0 
+pd.iconUsbState : 0 
+pd.iconWifiMode : 0 
+pd.iconWifiState : 0 
+pd.iconWindGenMode : 0 
+pd.iconWindGenState : 0 
+pd.iconWirelessChgMode : 0 
+pd.iconWirelessChgState : 0 
+pd.invUsedTime : 8051057 
+pd.kit1 : 0 
+pd.lcdBrightness : 128 
+pd.lcdOffSec : 300 
+pd.model : 2 
+pd.mpptUsedTime : 47807 
+pd.qcUsb1Watts : 0 
+pd.qcUsb2Watts : 0 
+pd.remainTime : 13394 
+pd.soc : 98 
+pd.standByMode : 0 
+pd.sysChgDsgState : 1 
+pd.sysVer : 16908366 
+pd.typccUsedTime : 2372 
+pd.typec1Temp : 16 
+pd.typec1Watts : 0 
+pd.typec2Temp : 16 
+pd.typec2Watts : 0 
+pd.usb1Watts : 0 
+pd.usb2Watts : 0 
+pd.usbqcUsedTime : 3088069 
+pd.usbUsedTime : 310927 
+pd.wattsInSum : 0 
+pd.wattsOutSum : 0 
+pd.wifiAutoRcvy : 0 
+pd.wifiRssi : 0 
+pd.wifiVer : 196609 
+pd.wirelessWatts : 0 
 
 
  */
@@ -245,7 +510,7 @@ import groovy.json.JsonSlurper;
 metadata {
     definition (name: "EcoFlow Delta2 mqtt", namespace: "EFmqtt", author: "Darryl Dimond", importURL: "not listed") {
          capability "Initialize"
-      //  capability "Actuator"
+        capability "Actuator"
         capability "Battery"
         capability "PowerMeter"
         capability "TemperatureMeasurement"
@@ -255,10 +520,12 @@ metadata {
         command "DCSwitchOFF"
         command "USBSwitchON"
         command "USBSwitchOFF"
+        command "LEDSwitchON"
+        command "LEDSwitchOFF"
         command "refreshdata"
       
         
-     //   ***** add variable names here that you see loaded to current states. 
+     //   ***** to load varibales to current states - add variable names that you see in device states or listed above.  
      //   ***** Only attributes defined here will be sent to current states and be available for rules/dashboards.
      //   When loading names here - replace all . (dots) with underscores  bms_bmsStatus.cycles = bms_bmsStatus_cycles
      //   Initialize button is required to load new attributes listed here.  
@@ -297,15 +564,33 @@ metadata {
         attribute "pd_soc", "number"
         attribute "ACoutput", "number"
         attribute "mppt_faultCode" , "number"
-        attribute "inv_outputWatts" , "number" 
+        attribute "inv_outputWatts" , "number"
         attribute "last update", "date"
-                
-     //   attribute "Tile123456789", "string"; // Ex: "[font size='2'][b]Voltage:[/b] ${ voltage }V[/br][/font]"
-        attribute "htmlTile1", "string"
-        attribute "htmlTile2", "string"
-    
+        // River loads
+        attribute "inv_errCode" , "number"
+	    attribute "inv_outputWatts" , "number"
+        attribute "inv_cfgAcEnabled", "number"
+	    attribute "inv_cfgAcXboost", "number"
+	    attribute "inv_outTemp" , "number"
+        attribute "inv_inputWatts", "number"
+		attribute "inv_invInFreq", "number"
+        attribute  "pd_wattsInSum", "number"
+        attribute  "pd_ledState" , "number"
+      // data pro loads
+        attribute "bmsMaster_inputWatts" , "number"
+	    attribute "bmsMaster_temp" , "number"
+        attribute "bmsSlave1_errCode", "number"
+	    attribute "bmsSlave1_f32ShowSoc", "number"
+	    attribute "bmsSlave1_remainTime", "number"
+		attribute "bmsSlave1_soc", "number"
+        attribute  "bmsSlave1_temp", "number"
+        attribute  "pd_ledState" , "number"
+        attribute  "bmsMaster_f32ShowSoc" , "number"
         
+ 
+       
 	   }
+
 
     preferences {
         input name: "unitserialno", type: "text", title: "serial number of unit:", required: true, displayDuringSetup: true
@@ -313,6 +598,7 @@ metadata {
         input name: "MQTTBroker", type: "text", title: "MQTT Broker Address:", required: true, displayDuringSetup: true
 		input name: "username", type: "text", title: "MQTT Username:", description: "(blank if none)", required: false, displayDuringSetup: true
 		input name: "password", type: "text", title: "MQTT Password:", description: "(blank if none)", required: false, displayDuringSetup: true
+        input name: "EFmodel", type: "text", title: "EF model:", description: "options are delta2 deltapro or river - no caps", required: true, displayDuringSetup: true, defaultValue: "delta"
 	    input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: true)
         input name: "updateTime", type: "number", title: "Background Data Refresh Rate (Seconds)", required: false, defaultValue: 300, displayDuringSetup: true
         input("deltaflag", "bool", title: "flag changes", description: "Turn on to locate data points that have changed since last scan - refresh webpage to clear" , required: true, defaultValue: false)
@@ -329,7 +615,8 @@ def installed() {
 
 // Parse incoming device messages to generate events
 def parse(String description) {
-    if (logEnable) log.debug "pares() running"
+    log.info "pares() running"
+    log.info updateTime
     runIn(updateTime, refreshdata)
     Date date = new Date(); 
 	topic = interfaces.mqtt.parseMessage(description).topic
@@ -339,13 +626,8 @@ def parse(String description) {
     def jsonpl = jsonSlurper.parseText(payload) 
     if (logEnable) log.debug payload
     def jsonObject = new JsonSlurper().parseText(payload)
-    log.info "updating current states"
-    log.info jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc"
-    //device capability Updates
-    sendEvent(name: "battery" , value: jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", unit: "%", isStateChanged: true )
-    sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
-    sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."bms_bmsStatus.temp", unit: "°C", isStateChanged: true )
-    // scan through each JSON point - Process data 
+    if (logEnable)  log.info "updating current states"
+   // scan through each JSON point - Process data 
     jsonpl.data.quotaMap.each{
          keyAlphaOnly = it.key.replace(".","_");  // Get the dots out
          if (deltaflag) {  //if delta attribute list feature is on - then list changed attributes to current states 
@@ -354,35 +636,69 @@ def parse(String description) {
                   sendEvent(name: keyAlphaOnly +"**now", value: it.value, isStateChanged: true ) 
                }
           }
-          state."${ it.key }" = it.value   // load all the state values for display in device states
-          keyvalue = device.currentValue("$keyAlphaOnly") //save current device attribute to variable keyvalue.
+         oldstatevar = state."${ it.key }"
+         if (state."${ it.key }" != it.value) {  
+             state."${ it.key }" = it.value   // load all the state values for display in device states
+           if (logEnable)  log.info "update device state variable " + it.key + " value:" + it.value + " old value:" + oldstatevar
+         }
+         keyvalue = device.currentValue("$keyAlphaOnly") //save current device attribute to variable keyvalue.
             if (state.reloadData == 0) {  // If data reload flag is 0 grab new attributes by loading all to current states
                sendEvent(name: "${keyAlphaOnly}", value: it.value, isStateChanged: true )
+        
             }   
             if (keyvalue != null) {  //if device attrubute is defined (not null) - update attribute - 
                 if (keyvalue != it.value) { // if attribute value has not chnaged - skip it
                    sendEvent(name: "${keyAlphaOnly}", value: it.value , isStateChanged: true ) 
-                   log.info "**update device** " + keyAlphaOnly + " value=" + it.value
+                   log.info "<b>**update device current state**</b> " + keyAlphaOnly + " value:" + it.value + " old value:" + keyvalue
                 } 
            }       
     }
    sendEvent(name: "last update", value: date, displayed: false)
-//**************************************************************************************
-// load special attrubutes for on/off switches
-// This line must be as per JSON - do not replace "." with underscores
-// line below for AC enabled JSON variable 
-      inv_cfgAcEnabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
-// line below for 12vdc enabled JSON variable
-     DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
-// line below for USB enabled JSON variable
-     USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
-//**************************************************************************************  
-          
-//check if output states have changed and update the child's state if required.
-    if( inv_cfgAcEnabled != state.ACoutput ){ 
+
+// Get JSON varaible for device outputs - case by model
+   switch (EFmodel) {
+    case "delta2": 
+         log.info "delta2 set-up loaded"
+         ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
+         DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
+         USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
+         LEDOutput_Enabled = jsonpl.data.quotaMap."pd.ledState"
+         sendEvent(name: "battery" , value: jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", unit: "%", isStateChanged: true )
+         sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
+         sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."bms_bmsStatus.temp", unit: "°C", isStateChanged: true )
+      break
+      case "river":
+         log.info "river set-up loaded"
+         ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
+         DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
+         USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
+         LEDOutput_Enabled = jsonpl.data.quotaMap."pd.ledState"
+         sendEvent(name: "battery" , value: jsonpl.data.quotaMap."pd.soc", unit: "%", isStateChanged: true )
+         sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
+         sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."inv.outTemp", unit: "°C", isStateChanged: true )
+      break 
+      case "deltapro":
+         log.info "deltapro set-up loaded"
+         ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
+         DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
+         USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
+         LEDOutput_Enabled = jsonpl.data.quotaMap."pd.ledState"
+         sendEvent(name: "battery" , value: jsonpl.data.quotaMap."bmsMaster.soc", unit: "%", isStateChanged: true )
+         sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
+         sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."bmsMaster.temp", unit: "°C", isStateChanged: true )
+       break
+       default : 
+         DCOutput_Enabled = null
+         USBOutput_Enabled = null
+         LEDOutput_Enabled = null
+         log.info "model type not found in parse"+ EFmodel
+      }
+      
+     //check if output states have changed and update the child's state if required.
+    if( ACOutput_Enabled != state.ACoutput ){ 
         state.cdtype = 1
         def cd = fetchChild("Switch")
-         if ( inv_cfgAcEnabled == 1 ){
+         if ( ACOutput_Enabled == 1 ){
              cd.parse([[name:"switch", value:"on", descriptionText:"AC Switch was turned on"]])  
              state.ACoutput = 1
              state.ACoutputSTR = "Enabled"
@@ -418,15 +734,34 @@ def parse(String description) {
              state.USBoutputSTR = "OFF"
         }
      }
-    log.info "current states updated"
+     
+     if( LEDOutput_Enabled != state.LEDoutput ){ 
+        state.cdtype = 4
+        def cd = fetchChild("Switch")
+        if ( LEDOutput_Enabled == 1 ){
+             cd.parse([[name:"switch", value:"on", descriptionText:"LED Light was turned on"]])  
+             state.LEDoutput = 1
+             state.LEDoutputSTR = "Enabled"
+        } else {
+             cd.parse([[name:"switch", value:"off", descriptionText:"LED light was turned off"]])
+             state.LEDoutput  = 0
+             state.LEDoutputSTR = "OFF"
+        }
+     }
+       
+      
+  if (logEnable)  log.info "current states updated"
+    state.reloadData = 1
     updateHtml()
     UpdateTile()
 } 
  //refresh data by sending mqtt command requesting data update
 def refreshdata() {
+    if (state.refreshpayload == null){
+        log.info "no MQTT string - check inputs for defined EF model - Hit the Save Preferences button and then the Initialize Button "
+    }
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/get"
-    ppayload = /{"from":"Android","id":"380541000","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/
-    interfaces.mqtt.publish(ptopic, ppayload )
+    interfaces.mqtt.publish(ptopic, state.refreshpayload )
   }
  
 def publishMsg(String s) {
@@ -449,10 +784,58 @@ def uninstalled() {
     
 }
 def initialize() {
-//    log.info "initialize dd"
+    if (logEnable)log.info "initialize"
 	if (logEnable) runIn(900,logsOff)
     if (deltaflag) runIn(900,deltaflagOFF)
-    log.info "data stream in " + updatetime + "seconds"
+    device.updateSetting("Deltaflag",[value:"false",type:"bool"])
+    switch (EFmodel) {
+    case "delta2":
+       state.AConPayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"acOutCfg","params":{"out_voltage":-1,"out_freq":255,"xboost":255,"enabled":1},"version":"1.0"}/
+       state.ACoffPayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"acOutCfg","params":{"out_voltage":-1,"out_freq":255,"xboost":255,"enabled":0},"version":"1.0"}/
+       state.DConPayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"mpptCar","params":{"enabled":1},"version":"1.0"}/
+       state.DCoffPayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"mpptCar","params":{"enabled":0},"version":"1.0"}/
+       state.USBonPayload = /{"from":"Android","id":"498321003","moduleType":1,"operateType":"dcOutCfg","params":{"enabled":1},"version":"1.0"}/
+       state.USBoffPayload = /{"from":"Android","id":"498321003","moduleType":1,"operateType":"dcOutCfg","params":{"enabled":0},"version":"1.0"}/
+       state.LEDonPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 00,"state": 1},"version": "1.0"}/
+       state.LEDoffPayload =/{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 00,"state": 0},"version": "1.0"}/
+       state.refreshpayload = /{"from":"Android","id":"380541001","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/ 
+    break
+    case "river": 
+       state.AConPayload =  /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 66,"enabled": 1},"version":"1.0"}/
+       state.ACoffPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 66,"enabled": 0},"version":"1.0"}/
+       state.DConPayload =  /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 34,"enabled": 1},"version": "1.0"}/
+       state.DCoffPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 34,"enabled": 0},"version": "1.0"}/
+       state.USBonPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 72,"enabled": 1},"version": "1.0"}/
+       state.USBoffPayload =/{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 72,"enabled": 0},"version": "1.0"}/
+       state.LEDonPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 35,"state": 1},"version": "1.0"}/
+       state.LEDoffPayload =/{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 35,"state": 0},"version": "1.0"}/
+       state.refreshpayload = /{"from":"Android","id":"380541001","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/
+    break
+        case "deltapro":
+       state.AConPayload =  /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 66,"enabled": 1},"version":"1.0"}/
+       state.ACoffPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 66,"enabled": 0},"version":"1.0"}/
+       state.DConPayload =  /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 81,"enabled": 1},"version": "1.0"}/
+       state.DCoffPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 81,"enabled": 0},"version": "1.0"}/
+       state.USBonPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 72,"enabled": 1},"version": "1.0"}/
+       state.USBoffPayload =/{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 72,"enabled": 0},"version": "1.0"}/
+       state.LEDonPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 00,"state": 1},"version": "1.0"}/
+       state.LEDoffPayload =/{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 00,"state": 0},"version": "1.0"}/
+       state.refreshpayload = /{"from":"Android","id":"380541001","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/
+     break
+     default :
+       state.AConPayload =  null
+       state.ACoffPayload = null
+       state.DConPayload =  null
+       state.DCoffPayload = null
+       state.USBonPayload = null
+       state.USBoffPayload =null
+       state.LEDonPayload = null
+       state.LEDoffPayload =null
+       state.refreshpayload = null
+       log.info "model type not found"+ EFmodel   
+       
+    }
+    log.info "data stream in " + updateTime + "seconds"
     state.reloadData = 0
     log.info "reset initialize flag=" + state.reloadData
     mqttConnect()
@@ -485,10 +868,9 @@ def mqttConnect() {
         pauseExecution(1000)
         //log.info "Connection established"
 		if (logEnable) log.debug "Subscribed to: ${settings?.topicSub}"
-        log.info settings?.topicSub
-        interfaces.mqtt.subscribe(settings?.topicSub)
-        log.info "after subscribe dd"
-    } catch(e) {
+           log.info settings?.topicSub
+           interfaces.mqtt.subscribe(settings?.topicSub)
+        } catch(e) {
         if (logEnable) log.debug "Initialize error: ${e.message}"
     }
 }
@@ -499,8 +881,8 @@ def mqttClientStatus(String status) {
         try { interfaces.mqtt.disconnect() }
         catch (e) { }
         
-        if(logEnable) log.debug "Broker: ${status} Will restart in 5 seconds"
-        runIn (5,mqttConnect)  
+        if(logEnable) log.debug "Broker: ${status} Will restart in 15 seconds"
+        runIn (15,mqttConnect)  
     }
 } 
 
@@ -529,8 +911,8 @@ void ACSwitchON(){
     cd.parse([[name:"switch", value:"on", descriptionText:"AC Switch was turned on"]])
     log.info "AC switch on request"
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
-    ppayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"acOutCfg","params":{"out_voltage":-1,"out_freq":255,"xboost":255,"enabled":1},"version":"1.0"}/
-    interfaces.mqtt.publish(ptopic, ppayload )
+    log.info "topic=" + ptopic + " payload=" + state.AConPayload
+    interfaces.mqtt.publish(ptopic, state.AConPayload )
     pauseExecution(5000)
     refreshdata()   
 }
@@ -541,8 +923,8 @@ void ACSwitchOFF(){
     log.info "ACSwitchOFF cd off=" + cd
     cd.parse([[name:"switch", value:"off", descriptionText:"AC Switch was turned off"]])
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
-    ppayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"acOutCfg","params":{"out_voltage":-1,"out_freq":255,"xboost":255,"enabled":0},"version":"1.0"}/
-    interfaces.mqtt.publish(ptopic, ppayload ) 
+    log.info "topic=" + ptopic + " payload=" + state.ACoffPayload
+    interfaces.mqtt.publish(ptopic, state.ACoffPayload ) 
     pauseExecution(5000)
     refreshdata()   
 }       
@@ -551,9 +933,8 @@ void ACSwitchOFF(){
     def cd = fetchChild("Switch")  
     cd.parse([[name:"switch", value:"on", descriptionText:"DC Switch was turned on"]])
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
-    ppayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"mpptCar","params":{"enabled":1},"version":"1.0"}/
-    log.info "topic=" + ptopic + " payload=" + ppayload
-    interfaces.mqtt.publish(ptopic, ppayload )
+    log.info "topic=" + ptopic + " payload=" + state.DConPayload
+    interfaces.mqtt.publish(ptopic, state.DConPayload )
     pauseExecution(5000)
     refreshdata() 
     
@@ -565,9 +946,8 @@ void DCSwitchOFF(){
     cd.parse([[name:"switch", value:"off", descriptionText:"DC Switch was turned off"]])
     log.info "DC switch off request"
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
-    ppayload = /{"from":"Android","id":"498321003","moduleType":5,"operateType":"mpptCar","params":{"enabled":0},"version":"1.0"}/
-    log.info "topic=" + ptopic + " payload=" + ppayload
-    interfaces.mqtt.publish(ptopic, ppayload )
+    log.info "topic=" + ptopic + " payload=" + state.DCoffPayload
+    interfaces.mqtt.publish(ptopic, state.DCoffPayload )
     pauseExecution(5000)
     refreshdata()
        
@@ -579,9 +959,8 @@ void USBSwitchON(){
     cd.parse([[name:"switch", value:"on", descriptionText:"USB Switch was turned on"]])
     log.info "USB switch on request"
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
-    ppayload = /{"from":"Android","id":"498321003","moduleType":1,"operateType":"dcOutCfg","params":{"enabled":1},"version":"1.0"}/
-    log.info "topic=" + ptopic + " payload=" + ppayload
-    interfaces.mqtt.publish(ptopic, ppayload )
+    log.info "topic=" + ptopic + " payload=" + state.USBonPayload
+    interfaces.mqtt.publish(ptopic, state.USBonPayload )
     pauseExecution(5000)
     refreshdata()
 }
@@ -592,12 +971,37 @@ void USBSwitchOFF(){
     cd.parse([[name:"switch", value:"off", descriptionText:"USB Switch was turned off"]])
     log.info "USB switch off request"
     ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
-    ppayload = /{"from":"Android","id":"498321003","moduleType":1,"operateType":"dcOutCfg","params":{"enabled":0},"version":"1.0"}/
-    log.info "topic=" + ptopic + " payload=" + ppayload
-    interfaces.mqtt.publish(ptopic, ppayload )
+    log.info "topic=" + ptopic + " payload=" + state.USBoffPayload
+    interfaces.mqtt.publish(ptopic, state.USBoffPayload )
+    pauseExecution(5000)
+    refreshdata()
+}  
+
+void LEDSwitchON(){
+    state.cdtype = 4
+    def cd = fetchChild("Switch")  
+    log.info "LEDSwitchOFF cd on=" + cd
+    cd.parse([[name:"switch", value:"on", descriptionText:"LED Light was turned on"]])
+    log.info "LED light on request"
+    ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
+    log.info "topic=" + ptopic + " payload=" + state.LEDonPayload
+    interfaces.mqtt.publish(ptopic, state.LEDonPayload )
     pauseExecution(5000)
     refreshdata()
 }   
+void LEDSwitchOFF(){
+    state.cdtype = 4
+    def cd = fetchChild("Switch")  
+    log.info "LEDSwitchOFF cd off=" + cd
+    cd.parse([[name:"switch", value:"off", descriptionText:"LED Light was turned off"]])
+    log.info "LED light off request"
+    ptopic = "/app/" +mqttclientname + "/" + unitserialno + "/thing/property/set"
+    log.info "topic=" + ptopic + " payload=" + state.LEDoffPayload
+    interfaces.mqtt.publish(ptopic, state.LEDoffPayload )
+    pauseExecution(5000)
+    refreshdata()
+}   
+
 
 //get data for switches 1, 2, and 3. If child1 does not exist - create all of them.
 def fetchChild(String type){ 
@@ -605,14 +1009,15 @@ def fetchChild(String type){
     log.info "fetchChild run >> thisID=" + thisId +  " cdtype=" + state.cdtype
        def cd = getChildDevice("${thisId}${state.cdtype}-Switch")
        log.info "fetchchild CD=" + cd
-         if (!cd) {
+        if (!cd) {
            cd =  addChildDevice("hubitat", "Generic Component Switch", "${thisId}1-Switch", [name: "EF AC Switch", isComponent: true])
            cd1 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}2-Switch", [name: "EF DC Switch", isComponent: true])
-           cd2 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}3-Switch", [name: "EF USB Switch", isComponent: true])      
+           cd2 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}3-Switch", [name: "EF USB Switch", isComponent: true])  
+           cd3 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}4-Switch", [name: "EF LED Switch", isComponent: true]) 
            log.info "type=" +type + " thisid=" + thisId + "displayname=" + device.displayName
            List<Map> defaultValues = []
            cd.parse(defaultValues)
-         }
+        }
     return cd      
 }
 
@@ -629,7 +1034,10 @@ void componentOn(cd){
             case "EF DC Switch":
                 DCSwitchON()
                 break
-       }         
+            case "EF LED Switch":
+                LEDSwitchON()
+                break
+      }         
 }
 
 // child has requested state change to OFF - determine what child is asking for change and run sequence to update device
@@ -640,12 +1048,14 @@ void componentOff(cd){
             ACSwitchOFF()
             break
         case "EF USB Switch":
-              USBSwitchOFF()
-                break
+            USBSwitchOFF()
+            break
         case "EF DC Switch":
-                DCSwitchOFF()
-                break
-
+            DCSwitchOFF()
+            break
+        case "EF LED Switch":
+            LEDSwitchOFF()
+            break
         }
 }
    // Process data to check against current state value and then send an event if it has changed
@@ -682,11 +1092,11 @@ private void UpdateTile(){
      def val = ""
    // Create special compound/html tile
 //   val = "<B>Power : </B> "+ device.currentValue("power").toString() + " W</BR><B>Amperage : </B> " + device.currentValue("amperage").toString() + " A</BR><B>Energy : </B> " + device.currentValue("energy").toString() + " KWh</BR><B>Voltage : </B> " + device.currentValue("voltage").toString() + " V"
-       val1 = "<B>Main SOC : </B> "+ device.currentValue("bms_emsStatus_f32LcdShowSoc").toString() 
+ //      val1 = "<B>Main SOC : </B> "+ device.currentValue("bms_emsStatus_f32LcdShowSoc").toString() 
        //  val1 = "AC Status:"+ state.ACoutputSTR + " 12v Status:" + state.DCoutputSTR  + " USB Ouputs:" + state.USBoutputSTR
   //    val2 = "Main Cell Temp:"state."bms_bmsStatus.temp"  + "Slave Cell Temp:" + state."bms_slave.temp" 
    // if( device.currentValue( "htmlTile1" ).toString() != val1 ){
-       sendEvent( name: "htmlTile1", value: val1 )
+   //    sendEvent( name: "htmlTile1", value: val1 )
   //    }
 //if( device.currentValue( "htmlTile2" ).toString() != val2 ){
 //       sendEvent( name: "htmlTile2", value: val2 )
@@ -715,8 +1125,8 @@ private void UpdateTile(){
 // Not working - 
 private void updateHtml( String val ){
  //  log.info "html=" + settings.htmlTemplate
-    state.reloadData = 1
-    log.info "set initialize flag=" + state.reloadData
+    
+ //   log.info "set initialize flag=" + state.reloadData
     if( settings.htmlTemplate ){
         // Create special compund/html tile
         val = settings.htmlTemplate.toString().replaceAll( ~/\$\{\s*([A-Za-z][A-Za-z0-9_]*)\s*\}/ ) { java.util.ArrayList m -> device.currentValue("${ m [ 1 ] }").toString() }
@@ -726,9 +1136,6 @@ private void updateHtml( String val ){
         }
     }
 }
-
-
-
 
 
 
