@@ -1,11 +1,12 @@
-**
+/**
  *  ****************  ECOFLOW DELTA PRO / DELTA 2 & RIVER SERIES MQTT HUBITAT DRIVER -   ****************
  *                    
  *               
  *                          
- *  D. Dimond 01/23/2023
-
- *  Design Usage:
+ *  D. Dimond 01/24/2023
+ *  Hubitat @daryl678
+ * 
+ *   Design Usage:
  *  This driver is designed to control Ecowflow battery models Delta 2, Delta pro, and River.  
  *  The driver will create child switches based on the model. The Delta2: AC, DC, & USB. The Delta Pro: AC & DC. The River AC, DC, and LED light
  *    
@@ -24,11 +25,11 @@
  *   by loading your device with the internal Hubitat driver called DEVICE and clear out child devices.
  *   
  *  
- *   thank you(s)
+ *   Thank You(s)
  *    Mark H. for helping me obtain my MQTT codes and getting my copy of MQTT Explorer up and running.
  *    @shircliffs for giving me control of his Delta Pro to test functions and grab variables
  *    @steve101 for providing Delta Pro model parameters
- *    @ronv42 for providing River parameters
+ *    @ronv42 for providing River Parameters
  *    @snell for always taking the time to give detailed responses to all my coding questions
  * 
  * ------------------------------------------------------------------------------------------------------------------------------
@@ -47,6 +48,11 @@
  *  0.0.0 Needs River MAP and function test.
  *  0.0.0a Added LED Null for DElta2 data map
  *  0.0.0b removed duplicated attribute "Output Status USB", "number"
+ *  0.0.0c  ProcessEvent( "Temp Slave Cell" >>tunit was tunitm
+ *           ProcessEvent( "Watts DC Out" was  "Watts Car Out"
+ *           fixed some code indent cosmetics
+ *           set mqtt.ecoflow.com as default broker input
+ *           add battery status - remain time and charge time string
  */
 
 import groovy.json.JsonSlurper;
@@ -75,7 +81,6 @@ metadata {
     attribute "Output Status USB", "number"
     attribute "Output Status LED", "number"
     attribute "Fault Code mppt", "number"
-    
     attribute "Fault Master Cell", "number"
     attribute "Fault Slave Cell", "number"
     attribute "SOC Master Cell", "number"
@@ -89,6 +94,7 @@ metadata {
     attribute "Temp Inverter Out", "number"
     attribute "Temp Inverter In", "number"
     attribute "Time Remain", "number"
+    attribute "Battery Status", "string"
  //  attribute "Time Remain Slave", "number"
  //  attribute "Time Remain Display", "number"
     attribute "Watts DC Out", "number"
@@ -104,7 +110,7 @@ metadata {
   preferences {
     input name: "unitserialno", type: "text", title: "serial number of unit:", required: true, displayDuringSetup: true
     input name: "mqttclientname", type: "text", title: "mqttclientname:", required: true, displayDuringSetup: true
-    input name: "MQTTBroker", type: "text", title: "MQTT Broker Address:", required: true, displayDuringSetup: true
+    input name: "MQTTBroker", type: "text", title: "MQTT Broker Address:", required: true, displayDuringSetup: true, defaultValue: "mqtt.ecoflow.com"
     input name: "username", type: "text", title: "MQTT Username:", description: "(blank if none)", required: false, displayDuringSetup: true
     input name: "password", type: "text", title: "MQTT Password:", description: "(blank if none)", required: false, displayDuringSetup: true
     input name: "EFmodel", type: "text", title: "EF model:", description: "options are delta2 deltapro or river - no caps", required: true, displayDuringSetup: true, defaultValue: "delta"
@@ -154,6 +160,16 @@ def parse(String description) {
     adder = 0
     tunit = "C"
   }
+    timerm = jsonpl.data.quotaMap."pd.remainTime"
+    Integer timermHR = timerm / 60
+    Integer timermMIN = timerm - timermHR * 60
+     if (timerm < 0 ){
+       log.info "Remain Time " + timermHR + ":" + timermMIN + " hr:mn"
+     BatteryStatus ="Remain Time " + timermHR + ":" + timermMIN + " hr:mn"   
+    }else{
+       log.info "Charge Time " + timermHR + ":" + timermMIN + " hr:mn"
+       BatteryStatus ="Charge Time " + timermHR + ":" + timermMIN + " hr:mn" 
+   }
 // Get JSON varaible for device outputs - case by model
     switch (EFmodel) {
        case "delta2": 
@@ -182,9 +198,10 @@ def parse(String description) {
        ProcessEvent( "Temp Inverter Out" ,  jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, ture  )
        ProcessEvent( "Temp Master Cell" ,  jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder, tunit, true  )
        ProcessEvent( "Temp Mppt" ,  jsonpl.data.quotaMap."mppt.mpptTemp"* mul + adder, tunit, ture  )
-       ProcessEvent( "Temp Slave Cell" ,  jsonpl.data.quotaMap."bms_slave.temp" * mul + adder, tunitm, true  )
+       ProcessEvent( "Temp Slave Cell" ,  jsonpl.data.quotaMap."bms_slave.temp" * mul + adder, tunit, true  )
        ProcessEvent( "Time Remain" ,  jsonpl.data.quotaMap."pd.remainTime", "mins", true )
-       ProcessEvent( "Watts Car Out" ,  jsonpl.data.quotaMap."pd.carWatts", "W", true )
+       ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
+       ProcessEvent( "Watts DC Out" ,  jsonpl.data.quotaMap."pd.carWatts", "W", true )
        ProcessEvent( "Watts AC In" ,  jsonpl.data.quotaMap."inv.inputWatts", "W", true )
        ProcessEvent( "Watts AC Out" ,  jsonpl.data.quotaMap."inv.outputWatts", "W", true )
     // ProcessEvent( "Watts Master In" ,  jsonpl.data.quotaMap."bms_bmsStatus.inputWatts","W" )
@@ -218,7 +235,8 @@ def parse(String description) {
 //     ProcessEvent(  "Temp Mppt" , jsonpl.data.quotaMap."mppt.mpptTemp"* mul + adder, tunit, true )
        ProcessEvent(  "Temp Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true )
        ProcessEvent(  "Time Remain" , jsonpl.data.quotaMap."pd.remainTime", unit: "mins", true )
-       ProcessEvent(  "Watts Car Out" , jsonpl.data.quotaMap."pd.carWatts", unit: "W", true )
+       ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
+       ProcessEvent(  "Watts DC Out" , jsonpl.data.quotaMap."pd.carWatts", unit: "W", true )
        ProcessEvent(  "Watts AC In" , jsonpl.data.quotaMap."inv.inputWatts", unit: "W", true )
        ProcessEvent(  "Watts AC Out" , jsonpl.data.quotaMap."inv.outputWatts", unit: "W", true )
  //    ProcessEvent(  "Watts Master In" , jsonpl.data.quotaMap."bmsMaster.inputWatts", "W", true )
@@ -245,20 +263,21 @@ def parse(String description) {
         ProcessEvent(  "Fault Master Cell" , jsonpl.data.quotaMap."bmsMaster.bmsFault", null, true )
         ProcessEvent(  "Fault Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.bmsFault", null, true )
         ProcessEvent(  "SOC Master Cell" , jsonpl.data.quotaMap."bmsMaster.soc", "%",  true )
-//        ProcessEvent(  "SOC Master Display" , jsonpl.data.quotaMap."bmsMaster.fShowSoc", "%",  true )
+//      ProcessEvent(  "SOC Master Display" , jsonpl.data.quotaMap."bmsMaster.fShowSoc", "%",  true )
         ProcessEvent(  "SOC Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.soc", "%",  true )
- //       ProcessEvent(  "SOC Slave Display" , jsonpl.data.quotaMap."bmsSlave.fShowSoc",  "%", true )
+ //     ProcessEvent(  "SOC Slave Display" , jsonpl.data.quotaMap."bmsSlave.fShowSoc",  "%", true )
         ProcessEvent(  "Temp DC" , jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, true )
         ProcessEvent(  "Temp Inverter" , jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true )
         ProcessEvent(  "Temp Master Cell" , jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, tunit, true )
         ProcessEvent(  "Temp Mppt" , jsonpl.data.quotaMap."mppt.mpptTemp" * mul + adder, tunit, true )
         ProcessEvent(  "Temp Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true )
         ProcessEvent( "Time Remain" ,  jsonpl.data.quotaMap."pd.remainTime", "mins", true )
-        ProcessEvent(  "Watts Car Out" , jsonpl.data.quotaMap."pd.carWatts", "W", true )
+        ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
+        ProcessEvent(  "Watts DC Out" , jsonpl.data.quotaMap."pd.carWatts", "W", true )
         ProcessEvent(  "Watts AC In" , jsonpl.data.quotaMap."inv.inputWatts", "W", true )
         ProcessEvent(  "Watts AC Out" , jsonpl.data.quotaMap."inv.outputWatts", "W", true )
-   //     ProcessEvent(  "Watts Master In" , jsonpl.data.quotaMap."bmsMaster.inputWatts", "W", true )
-  //      ProcessEvent(  "Watts Master Out" , jsonpl.data.quotaMap."bmsMaster.outputWatts", "W", true )
+   //   ProcessEvent(  "Watts Master In" , jsonpl.data.quotaMap."bmsMaster.inputWatts", "W", true )
+  //    ProcessEvent(  "Watts Master Out" , jsonpl.data.quotaMap."bmsMaster.outputWatts", "W", true )
         ProcessEvent(  "Watts Slave In" , jsonpl.data.quotaMap."bmsSlave1.inputWatts", "W", true )
         ProcessEvent(  "Watts Slave Out" , jsonpl.data.quotaMap."bmsSlave1.outputWatts", "W", true )
     break
@@ -274,13 +293,11 @@ def parse(String description) {
     state.cdtype = 1
     def cd = fetchChild("Switch")
     if (ACOutput_Enabled == 1) {
-      cd.parse([
-        [name: "switch", value: "on", descriptionText: "AC Switch was turned on"]])
+      cd.parse([[name: "switch", value: "on", descriptionText: "AC Switch was turned on"]])
       state.ACoutput = 1
       state.ACoutputSTR = "Enabled"
     } else {
-      cd.parse([
-        [name: "switch", value: "off", descriptionText: "AC Switch was turned off"]])
+      cd.parse([[name: "switch", value: "off", descriptionText: "AC Switch was turned off"]])
       state.ACoutput = 0
       state.ACoutputSTR = "OFF"
     }
@@ -289,13 +306,11 @@ def parse(String description) {
     state.cdtype = 2
     def cd = fetchChild("Switch")
     if (DCOutput_Enabled == 1) {
-      cd.parse([
-        [name: "switch", value: "on", descriptionText: "DC Switch was turned on"]])
+      cd.parse([[name: "switch", value: "on", descriptionText: "DC Switch was turned on"]])
       state.DCoutput = 1
       state.DCoutputSTR = "Enabled"
     } else {
-      cd.parse([
-        [name: "switch", value: "off", descriptionText: "DC Switch was turned off"]])
+      cd.parse([[name: "switch", value: "off", descriptionText: "DC Switch was turned off"]])
       state.DCoutput = 0
       state.DCoutputSTR = "OFF"
     }
@@ -305,13 +320,11 @@ def parse(String description) {
       state.cdtype = 3
       def cd = fetchChild("Switch")
       if (USBOutput_Enabled == 1) {
-        cd.parse([
-          [name: "switch", value: "on", descriptionText: "USB Switch was turned on"]])
+        cd.parse([[name: "switch", value: "on", descriptionText: "USB Switch was turned on"]])
         state.USBoutput = 1
         state.USBoutputSTR = "Enabled"
       } else {
-        cd.parse([
-          [name: "switch", value: "off", descriptionText: "USB Switch was turned off"]])
+        cd.parse([[name: "switch", value: "off", descriptionText: "USB Switch was turned off"]])
         state.USBoutput = 0
         state.USBoutputSTR = "OFF"
       }
@@ -322,13 +335,11 @@ def parse(String description) {
       state.cdtype = 4
       def cd = fetchChild("Switch")
       if (LEDOutput_Enabled == 1) {
-        cd.parse([
-          [name: "switch", value: "on", descriptionText: "LED Light was turned on"]])
+        cd.parse([[name: "switch", value: "on", descriptionText: "LED Light was turned on"]])
         state.LEDoutput = 1
         state.LEDoutputSTR = "Enabled"
       } else {
-        cd.parse([
-          [name: "switch", value: "off", descriptionText: "LED light was turned off"]])
+        cd.parse([[name: "switch", value: "off", descriptionText: "LED light was turned off"]])
         state.LEDoutput = 0
         state.LEDoutputSTR = "OFF"
       }
@@ -680,28 +691,13 @@ def ProcessEvent(Variable, Value, Unit = null, ForceEvent = false) {
     state.
     "${ Variable }" = Value
     if (Unit != null) {
-      //         Logging( "Event: ${ Variable } = ${ Value }${ Unit }", 4 )
-      sendEvent(name: "${ Variable }", value: Value, unit: Unit, isStateChanged: true)
+       sendEvent(name: "${ Variable }", value: Value, unit: Unit, isStateChanged: true)
     } else {
-      //          Logging( "Event: ${ Variable } = ${ Value }", 4 )
-      sendEvent(name: "${ Variable }", value: Value, isStateChanged: true)
+       sendEvent(name: "${ Variable }", value: Value, isStateChanged: true)
     }
-    //UpdateTile( "${ Value }" )
   }
 }
 
-// Process data to check against current state value and then send an event if it has changed
-def ProcessState(Variable, Value) {
-  log.info variable + value + "processState"
-  if (state.
-    "${ Variable }" != Value) {
-    Logging("State: ${ Variable } = ${ Value }", 4)
-    state.
-    "${ Variable }" = Value
-    updateHtml("${ Value }")
-  }
-
-}
 private void UpdateTile() {
   def val = ""
   // Create special compound/html tile
