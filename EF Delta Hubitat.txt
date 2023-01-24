@@ -44,7 +44,7 @@
  *
  *
  *  Changes:
- *  0.0.0 Needs River MAP and function test.
+ *  0.0.0 NOT RELEASED - Needs River MAP and function test.
  */
 
 import groovy.json.JsonSlurper;
