@@ -3,7 +3,7 @@
  *                    
  *               
  *                          
- *  D. Dimond 01/23/2023
+ *  D. Dimond 01/16/2023
 
  *  Design Usage:
  *  This driver is designed to control Ecowflow battery models Delta 2, Delta pro, and River.  
@@ -19,11 +19,10 @@
  *   Or follow this link to grab the instructions:
  *   https://github.com/darryl678/darryl678/blob/Hubitat-EF-Delta-Driver/Accessing-EF-.docx 
  *   
- *
+ *   
  *   This driver does not support the deletion of child devices. If changing the battery model after initialization clear child devices out manually 
  *   by loading your device with the internal Hubitat driver called DEVICE and clear out child devices.
  *   
- *
  *  
  *   thank you(s)
  *    Mark H. for helping me obtain my MQTT codes and getting my copy of MQTT Explorer up and running.
@@ -673,7 +672,6 @@ void componentOff(cd) {
   }
 }
 // Process data to check against current state value and then send an event if it has changed
-// not working
 def ProcessEvent(Variable, Value, Unit = null, ForceEvent = false) {
   if ((state.
       "${ Variable }" != Value) || (ForceEvent == true)) {
@@ -711,4 +709,3 @@ private void UpdateTile() {
         sendEvent( name: "htmlTile1", value: val1 )
      }
 }
-
