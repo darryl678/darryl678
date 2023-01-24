@@ -1,9 +1,9 @@
-/**
+**
  *  ****************  ECOFLOW DELTA PRO / DELTA 2 & RIVER SERIES MQTT HUBITAT DRIVER -   ****************
  *                    
  *               
  *                          
- *  D. Dimond 01/16/2023
+ *  D. Dimond 01/23/2023
 
  *  Design Usage:
  *  This driver is designed to control Ecowflow battery models Delta 2, Delta pro, and River.  
@@ -28,7 +28,7 @@
  *    Mark H. for helping me obtain my MQTT codes and getting my copy of MQTT Explorer up and running.
  *    @shircliffs for giving me control of his Delta Pro to test functions and grab variables
  *    @steve101 for providing Delta Pro model parameters
- *    @ronv42 for providing River Parameters
+ *    @ronv42 for providing River parameters
  *    @snell for always taking the time to give detailed responses to all my coding questions
  * 
  * ------------------------------------------------------------------------------------------------------------------------------
@@ -44,7 +44,9 @@
  *
  *
  *  Changes:
- *  0.0.0 NOT RELEASED - Needs River MAP and function test.
+ *  0.0.0 Needs River MAP and function test.
+ *  0.0.0a Added LED Null for DElta2 data map
+ *  0.0.0b removed duplicated attribute "Output Status USB", "number"
  */
 
 import groovy.json.JsonSlurper;
@@ -73,7 +75,7 @@ metadata {
     attribute "Output Status USB", "number"
     attribute "Output Status LED", "number"
     attribute "Fault Code mppt", "number"
-    attribute "Output Status USB", "number"
+    
     attribute "Fault Master Cell", "number"
     attribute "Fault Slave Cell", "number"
     attribute "SOC Master Cell", "number"
@@ -159,7 +161,7 @@ def parse(String description) {
        ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
        DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
        USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
-       LEDOutput_Enabled = jsonpl.data.quotaMap."pd.ledState" 
+       LEDOutput_Enabled = null 
        sendEvent(name: "power", value: jsonpl.data.quotaMap."inv.outputWatts", unit: "w", isStateChanged: true )
        sendEvent(name: "temperature", value: jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder, unit: tunit, isStateChanged: true )
        sendEvent(name: "battery", value: jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", unit: "%", isStateChanged: true )
@@ -709,3 +711,4 @@ private void UpdateTile() {
         sendEvent( name: "htmlTile1", value: val1 )
      }
 }
+
