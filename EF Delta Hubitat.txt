@@ -16,7 +16,8 @@
  *
  *   *** Special Instructions *** 
  *   Instructions are required to obtain your MQTT access keys. See Doc for instructions in GitHub folder to get your passcodes.
- *   Or follow this link to grab the instructions from google drive.
+ *   Or follow this link to grab the instructions:
+ *   https://github.com/darryl678/darryl678/blob/Hubitat-EF-Delta-Driver/Accessing-EF-.docx 
  *   
  *
  *   This driver does not support the deletion of child devices. If changing the battery model after initialization clear child devices out manually 
