@@ -57,7 +57,7 @@
  *  0.0.0e   Delatflag auto off control corrected
  *  0.0.0F   TEST ONLY - slow charge request - adding new command called CharWatts. See my hubitat mail for instructions.
  *  0.0.0G   added limit controls  
- *  0.0.0H   debug limit controls for DP - River model debug not completed
+ *  0.0.0H   debug limit controls for DP - minimum refresh min time decrease to 15 sec.
 */
 
 
@@ -506,8 +506,8 @@ def initialize() {
     state.refreshpayload = null
     log.info "model type not found - model input currently set as " + EFmodel
   }
-  if (settings.updateTime < 60) {
-    state.SetUpdateTime = 60
+  if (settings.updateTime < 15) {
+    state.SetUpdateTime = 15
   } else {
     state.SetUpdateTime = settings.updateTime
   }
@@ -963,6 +963,12 @@ def TimeoutDCOutput(cdata) {
   pauseExecution(5000)
   refreshdata()  
   }
+
+
+
+
+ 
+
 
 
 
