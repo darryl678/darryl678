@@ -1,8 +1,8 @@
 /**
- *  ****************  ECOFLOW DELTA PRO / DELTA 2 & RIVER SERIES MQTT HUBITAT DRIVER -   ****************
+ ***********************  ECOFLOW DELTA PRO / DELTA 2 SERIES MQTT HUBITAT DRIVER -   ***************************************
  *               	 
- *  Driver has been tested on DeltaPro and Delta 2 Batteries. Some functions may work with the EF River series, but more testing and
- *  debugging are required to confirm all driver commands work.
+ *  Driver has been tested on DeltaPro and Delta 2 Batteries. Some functions may work with the EF River series, but more
+ *  testing and debugging are required.
  *          	 
  *                     	 
  *  D. Dimond 01/31/2023
@@ -10,30 +10,33 @@
  *
  *  Design Usage:
  *  This driver is designed to control Ecowflow battery models Delta 2, Delta pro, and River.  
- *  The driver will create child switches based on the model. The Delta2: AC, DC, & USB. The Delta Pro: AC & DC. The River AC, DC, and LED light
+ *  The driver will create child switches based on the model. The Delta2: AC, DC, & USB. The Delta Pro: AC & DC. The River
+ *  AC, DC, and LED light.
  *    
  *  	 
- *  There is a lot of battery data - The Driver loads a small collection to current device states - There are built-in tools for tracking additional data points.
+ *  There is a lot of battery data - The Driver loads a small collection to current device states - There are built-in tools 
+ *   for tracking additional data points.
  *  1. All device states are loaded when debug is active
  *  2. A deltflag will display changes in device states to the log file when debug is active
  *  This can help track down additional attributes that can be manually added to the attribute def and ProcessEvent code lines.
  *
  *
- *                         ******************* Special Instructions **********************
- *  Instructions are required to obtain your MQTT access keys. See GitHub folder for MQTT instructions document with details to obtain your MQTT keys.
- *  Or follow this link to grab the instructions:  https://github.com/darryl678/darryl678/blob/Hubitat-EF-Delta-Driver/Accessing-EF-.docx
- *                         **************************************************************  
+ *************************************** Special Instructions ******************************************************************
+ *  A procedure is required to obtain your MQTT access keys. See GitHub folder for MQTT key instructions to obtain your MQTT   *
+ *  keys. Or follow this link to grab the instructions:                                                                        *
+ *  https://github.com/darryl678/darryl678/blob/Hubitat-EF-Delta-Driver/Accessing-EF-.docx                                    *
+ *********************************************************** *******************************************************************           
  *   
- *  This driver does not support the deletion of child devices. If changing the battery model after initialization clear child devices out manually
- *  by loading your device with the internal Hubitat driver called DEVICE and clear out child devices.
+ *  This driver does not support the deletion of child devices. If changing the battery model after initialization clear child
+ *  devices out manually by loading your device with the internal Hubitat driver called DEVICE and clear out child devices.
  *   
  *  
  *  Thank You(s)
- *  Mark H. for helping me obtain my MQTT codes and getting my copy of MQTT Explorer up and running.
- *  @shircliffs for giving me control of his Delta Pro to test functions and grab variables
+ *  Mark H. - for helping me get mqtt explorer connected to my battery. That was the starting point.
+ *  @shircliffs for giving me control of his Delta Pro to test functions and figure out variable names
  *  @steve101 for providing Delta Pro model parameters
- *  @ronv42 for providing River Parameters
- *  @snell for always taking the time to give detailed responses to all my coding questions
+ *  @ronv42 for providing River Parameters and driver path discussions
+ *  @snell for always taking the time to give detailed responses to my never-ending coding questions.
  *
  * ------------------------------------------------------------------------------------------------------------------------------
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
@@ -47,12 +50,21 @@
  *
  *
  *
- *  Changes:
- *    0.1.0 01/31/2023 - Released for Delta2 and Deltapro - River Battery Model needs testing
- *    
+ *  Changes:             
+ *    0.1.0 01/31/2023 - Released for Delta2 and Deltapro - River Battery Model release pending
+ *    0.1.1 02/03/2023   Added mqtt status of "online" & "OFFLINE" to device’s current states
+ *                       Added mqtt disconnect command
+ *                       Added code below to reduce events on updates:
+ *                       1. Added code to reduce event update loads when using refresh times under 60 sec
+ *                       2. Added feature to update all current device states every X scans to catch any missed "isstatgechanged" flags
+ *                       3. Removed decimals from attributes to reduce event loading due to small changes in values
+ *                       4. The full list of battery variables is only updated to states variables when debug is active
+ *                       5. The feature to log changes to state variables is only active when debug is active.
+ *                       Added "Battery Status" attribute string showing battery time remaining in HH:MM format   
+ *                       Added RunRequest() block to reduce repetitive program code
+ *                       Fixed XBoost Child switch on/off function  
  *
  */
-
 
 
 import groovy.json.JsonSlurper;
@@ -74,6 +86,7 @@ metadata {
     command "LEDSwitchOFF"
     command "XBoostON"
     command "XBoostOFF"
+    command "Disconnect"
     command "refreshdata"
     command "LimitWattsCharging" , ["number"]
     command "LimitDischarge", ["number"]
@@ -85,9 +98,7 @@ metadata {
     command "TimeOutScreen",["number"]
     command "TimeoutACOutput",["number"]
     command "TimeoutDCOutput",["number"]
-     
-      
-    
+
     attribute "Cycles on Master", "number"
     attribute "Cycles on Slave", "number"
     attribute "Output Status AC", "number"
@@ -130,9 +141,7 @@ metadata {
     attribute "Timeout AC Output" , "number" 
     attribute "Timeout DC Output" , "number" 
     attribute "DC Charging Watts" , "number"  
-      
-      
-     
+    attribute "mqtt Status" , "string"
   }
 
   preferences {
@@ -140,23 +149,24 @@ metadata {
     input name: "mqttclientname", type: "text", title: "mqttclientname:", required: true, displayDuringSetup: true
     input name: "MQTTBroker", type: "text", title: "MQTT Broker Address:", required: true, displayDuringSetup: true, defaultValue: "mqtt.ecoflow.com"
     input name: "username", type: "text", title: "MQTT Username:", description: "(blank if none)", required: false, displayDuringSetup: true
-    input name: "password", type: "text", title: "MQTT Password:", description: "(blank if none)", required: false, displayDuringSetup: true
+    input name: "password", type: "password", title: "MQTT Password:", description: "(blank if none)", required: false, displayDuringSetup: true
     input name: "EFmodel", type: "text", title: "EF model:", description: "options are delta2 deltapro or river - no caps", required: true, displayDuringSetup: true, defaultValue: "delta"
     input name: "tempF", type: "text", title: "Temp in C or F:", description: "type C or F", required: true, displayDuringSetup: true, defaultValue: "C"
     input("logEnable", "bool", title: "Enable logging", required: true, defaultValue: true)
     input name: "updateTime", type: "number", title: "Background Data Refresh Rate (Seconds) 60 recommended - minimum is 15", required: false, defaultValue: 60, displayDuringSetup: true
+    input name: "allrefresh", type: "number", title: "Number of changed only updates before all current states are updated", required: true, defaultValue: 5, displayDuringSetup: true
     input(name: "htmlTemplate1", type: "string", title: "<b>Tile Template</b>", description: "<font size='2'>Ex: [b]Remaining Minutes:[/b] \${ remainMins }V[/br]</font>", defaultValue: "");
   }
 
 }
 
 def installed() {
-  log.info "installed dd..."
+  initialize()
 }
 
 // Parse incoming device messages to generate events
-  def parse(String description) {
-  log.info "Updating Data"
+def parse(String description) {
+  log.info "Updating " + EFmodel + " data"
   runIn(state.SetUpdateTime, refreshdata)
   Date date = new Date();
   topic = interfaces.mqtt.parseMessage(description).topic
@@ -169,15 +179,14 @@ def installed() {
   if (logEnable) log.info "updating current states"
   // scan through each JSON point - Process data 
   jsonpl.data.quotaMap.each {
-      if (logEnable) {
-         if (state."${ it.key }" != it.value) {
-            oldstatevar = state."${ it.key }"
-            state."${ it.key }" = it.value // load all the state values for display in device states
-            log.info "Battery variable>>" + it.key + "<< old value:* " + oldstatevar + " NEW VALUE: *** " + it.value  //flag battery variable changes to info log
+     if (logEnable) {
+        if (state."${ it.key }" != it.value) {
+           oldstatevar = state."${ it.key }"
+           state."${ it.key }" = it.value // load all the state values for display in device states
+           log.info "Battery variable>>" + it.key + "<< old value:* " + oldstatevar + " NEW VALUE: *** " + it.value  //flag battery variable changes to info log
         }
      }
   }
-
   if (tempF == "F") { //check if temp request is C or F
     mul = 9 / 5
     adder = 32
@@ -187,17 +196,17 @@ def installed() {
     adder = 0
     tunit = "C"
   }
-    timerm = jsonpl.data.quotaMap."pd.remainTime"
-    Integer timermHR = timerm / 60
-    Integer timermMIN = timerm - timermHR * 60
-     if (timerm < 0 ){
-      BatteryStatus ="Remain Time " + timermHR + ":" + timermMIN + " hr:mn"   
-    }else{
-      BatteryStatus ="Charge Time " + timermHR + ":" + timermMIN + " hr:mn" 
-   }
-// Get JSON varaible for device outputs - case by model
-    switch (EFmodel) {
-       case "delta2": 
+  timerm = jsonpl.data.quotaMap."pd.remainTime"
+  Integer timermHR = timerm / 60
+  Integer timermMIN = timerm - timermHR * 60
+  BatteryStatus = timermHR + ":" + timermMIN
+  if (BatteryStatus != state.tbs ) {
+    sendEvent(name: "Battery Status", value: BatteryStatus, isStateChanged: false )
+    state.tbs = BatteryStatus
+  }
+ // Get JSON varaible for device outputs - case by model
+  switch (EFmodel) {
+     case "delta2": 
        // log.info "Loading Delta 2 Data Map"
        ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
        DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
@@ -205,7 +214,8 @@ def installed() {
        LEDOutput_Enabled = null
        XBoost_Enabled = jsonpl.data.quotaMap."mppt.cfgAcXboost"
        sendEvent(name: "power", value: jsonpl.data.quotaMap."inv.outputWatts", unit: "w", isStateChanged: true )
-       sendEvent(name: "temperature", value: jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder, unit: tunit, isStateChanged: true )
+       Integer ttemp = jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder 
+       sendEvent(name: "temperature", value: ttemp, unit: tunit, isStateChanged: true )
        sendEvent(name: "battery", value: jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", unit: "%", isStateChanged: true )
        ProcessEvent( "Output Status AC", jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true )
        ProcessEvent( "Output Status DC" , jsonpl.data.quotaMap."mppt.carState", null, true )
@@ -219,14 +229,13 @@ def installed() {
        ProcessEvent( "SOC Master Cell" ,  jsonpl.data.quotaMap."bms_bmsStatus.f32ShowSoc", "%", true  )
        ProcessEvent( "SOC Master Display" , jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", "%", true )
        ProcessEvent( "SOC Slave Cell" ,  jsonpl.data.quotaMap."bms_slave.soc", "%", true  )
-       ProcessEvent( "SOC Slave Display" ,  jsonpl.data.quotaMap."bms_slave.f32ShowSoc", "%", true )
-       ProcessEvent( "Temp DC" ,  jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, ture )
-       ProcessEvent( "Temp Inverter Out" ,  jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, ture  )
-       ProcessEvent( "Temp Master Cell" ,  jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder, tunit, true  )
-       ProcessEvent( "Temp Mppt" ,  jsonpl.data.quotaMap."mppt.mpptTemp"* mul + adder, tunit, ture  )
-       ProcessEvent( "Temp Slave Cell" ,  jsonpl.data.quotaMap."bms_slave.temp" * mul + adder, tunit, true  )
+       ProcessEvent( "SOC Slave Display" , jsonpl.data.quotaMap."bms_slave.f32ShowSoc", "%", true )
+       ProcessEvent( "Temp DC" ,  jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, true )
+       ProcessEvent( "Temp Inverter Out" , jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true  )
+       ProcessEvent( "Temp Master Cell" , jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder, tunit, true  )
+       ProcessEvent( "Temp Mppt" ,  jsonpl.data.quotaMap."mppt.mpptTemp"* mul + adder , tunit, ture  )
+       ProcessEvent( "Temp Slave Cell" , jsonpl.data.quotaMap."bms_slave.temp" * mul + adder , tunit, true  )
        ProcessEvent( "Time Remain" ,  jsonpl.data.quotaMap."pd.remainTime", "mins", true )
-       ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
        ProcessEvent( "Watts DC Out" ,  jsonpl.data.quotaMap."pd.carWatts", "W", true )
        ProcessEvent( "Watts AC In" ,  jsonpl.data.quotaMap."inv.inputWatts", "W", true )
        ProcessEvent( "Watts AC Out" ,  jsonpl.data.quotaMap."inv.outputWatts", "W", true )
@@ -284,55 +293,55 @@ def installed() {
        //ProcessEvent(  "Watts Slave Out" , jsonpl.data.quotaMap."bmsSlave.outputWatts", "W", true  )
     break 
     case "deltapro":
-        //log.info "Loading Delta Pro Data Map"
-        ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
-        DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
-        USBOutput_Enabled = null
-        LEDOutput_Enabled = null
-        XBoost_Enabled = jsonpl.data.quotaMap."mppt.cfgAcXboost"
-        sendEvent(name: "battery" , value: jsonpl.data.quotaMap."bmsMaster.soc", unit: "%", isStateChanged: true )
-        sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
-        sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, unit: tunit, isStateChanged: true )
-        ProcessEvent(  "Output Status AC" , jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true )
-        ProcessEvent(  "Output Status DC" , jsonpl.data.quotaMap."mppt.carState", null, true  )
-        ProcessEvent(  "Output Status USB" , 0 , null, true )
-        ProcessEvent(  "Output Status LED" , 0 , null, true )
-        ProcessEvent(  "Cycles on Master" , jsonpl.data.quotaMap."bmsMaster.cycles", null, true )
-        ProcessEvent(  "Cycles on Slave" , jsonpl.data.quotaMap."bmsSlave1.cycles", null, true )
-        ProcessEvent(  "Fault Code mppt" , jsonpl.data.quotaMap."mppt.faultCode", null, true )
-        ProcessEvent(  "Fault Master Cell" , jsonpl.data.quotaMap."bmsMaster.bmsFault", null, true )
-        ProcessEvent(  "Fault Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.bmsFault", null, true )
-        ProcessEvent(  "SOC Master Cell" , jsonpl.data.quotaMap."bmsMaster.soc", "%",  true )
-        //ProcessEvent(  "SOC Master Display" , jsonpl.data.quotaMap."bmsMaster.fShowSoc", "%",  true )
-        ProcessEvent(  "SOC Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.soc", "%",  true )
-        //ProcessEvent(  "SOC Slave Display" , jsonpl.data.quotaMap."bmsSlave.fShowSoc",  "%", true )
-        ProcessEvent(  "Temp DC" , jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, true )
-        ProcessEvent(  "Temp Inverter" , jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true )
-        ProcessEvent(  "Temp Master Cell" , jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, tunit, true )
-        ProcessEvent(  "Temp Mppt" , jsonpl.data.quotaMap."mppt.mpptTemp" * mul + adder, tunit, true )
-        if (jsonpl.data.quotaMap."bmsSlave1.temp" != null) ProcessEvent(  "Temp Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true )
-        ProcessEvent( "Time Remain" ,  jsonpl.data.quotaMap."pd.remainTime", "mins", true )
-        ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
-        ProcessEvent(  "Watts DC Out" , jsonpl.data.quotaMap."pd.carWatts", "W", true )
-        ProcessEvent(  "Watts AC In" , jsonpl.data.quotaMap."inv.inputWatts", "W", true )
-        ProcessEvent(  "Watts AC Out" , jsonpl.data.quotaMap."inv.outputWatts", "W", true )
-        //ProcessEvent(  "Watts Master In" , jsonpl.data.quotaMap."bmsMaster.inputWatts", "W", true )
-        //ProcessEvent(  "Watts Master Out" , jsonpl.data.quotaMap."bmsMaster.outputWatts", "W", true )
-        if (jsonpl.data.quotaMap."bmsSlave1.inputWatts" != null ) ProcessEvent(  "Watts Slave In" , jsonpl.data.quotaMap."bmsSlave1.inputWatts", "W", true )
-        if (jsonpl.data.quotaMap."bmsSlave1.outputWatts" != null ) ProcessEvent(  "Watts Slave Out" , jsonpl.data.quotaMap."bmsSlave1.outputWatts", "W", true )
-        ProcessEvent( "Limit Charging Rate" ,  jsonpl.data.quotaMap."inv.cfgSlowChgWatts", "%", true )
-        ProcessEvent( "Limit Discharge" ,  jsonpl.data.quotaMap."bms_emsStatus.minDsgSoc", "%", true )
-        ProcessEvent( "Limit Charge" ,  jsonpl.data.quotaMap."bms_emsStatus.maxChargeSoc", "%", true )
-        ProcessEvent( "SmartGen On Point" ,  jsonpl.data.quotaMap."bms_emsStatus.minOpenOilEb", "%", true )
-        ProcessEvent( "SmartGen Off Point" ,  jsonpl.data.quotaMap."bms_emsStatus.maxCloseOilEb", "%", true )     
-        ProcessEvent( "Limit CarCharge Amps" ,  jsonpl.data.quotaMap."mppt.cfgDcChgCurrent" / 1000, "A", true )
-        ProcessEvent( "Output XBoost" ,  jsonpl.data.quotaMap."mppt.cfgAcXboost", null, true )
-        ProcessEvent( "TimeOut Unit" ,  jsonpl.data.quotaMap."pd.standByMode" / 60 , null, true )
-        ProcessEvent( "TimeOut Screen" ,  jsonpl.data.quotaMap."pd.lcdOffSec" / 60, null, true ) 
-        ProcessEvent( "Timeout AC Output" ,  jsonpl.data.quotaMap."inv.cfgStandbyMin" / 60, null, true )
-        //ProcessEvent( "Timeout DC Output" ,  jsonpl.data.quotaMap."mppt.carStandbyMin" / 60, null, true )
-        ProcessEvent( "DC Charging Watts" ,  jsonpl.data.quotaMap."mppt.inWatts",  null, true )
-        break
+       //log.info "Loading Delta Pro Data Map"
+       ACOutput_Enabled = jsonpl.data.quotaMap."inv.cfgAcEnabled"
+       DCOutput_Enabled = jsonpl.data.quotaMap."mppt.carState"
+       USBOutput_Enabled = null
+       LEDOutput_Enabled = null
+       XBoost_Enabled = jsonpl.data.quotaMap."mppt.cfgAcXboost"
+       sendEvent(name: "battery" , value: jsonpl.data.quotaMap."bmsMaster.soc", unit: "%", isStateChanged: true )
+       sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
+       sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, unit: tunit, isStateChanged: true )
+       ProcessEvent(  "Output Status AC" , jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true )
+       ProcessEvent(  "Output Status DC" , jsonpl.data.quotaMap."mppt.carState", null, true  )
+       ProcessEvent(  "Output Status USB" , 0 , null, true )
+       ProcessEvent(  "Output Status LED" , 0 , null, true )
+       ProcessEvent(  "Cycles on Master" , jsonpl.data.quotaMap."bmsMaster.cycles", null, true )
+       ProcessEvent(  "Cycles on Slave" , jsonpl.data.quotaMap."bmsSlave1.cycles", null, true )
+       ProcessEvent(  "Fault Code mppt" , jsonpl.data.quotaMap."mppt.faultCode", null, true )
+       ProcessEvent(  "Fault Master Cell" , jsonpl.data.quotaMap."bmsMaster.bmsFault", null, true )
+       ProcessEvent(  "Fault Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.bmsFault", null, true )
+       ProcessEvent(  "SOC Master Cell" , jsonpl.data.quotaMap."bmsMaster.soc", "%",  true )
+       //ProcessEvent(  "SOC Master Display" , jsonpl.data.quotaMap."bmsMaster.fShowSoc", "%",  true )
+       ProcessEvent(  "SOC Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.soc", "%",  true )
+       //ProcessEvent(  "SOC Slave Display" , jsonpl.data.quotaMap."bmsSlave.fShowSoc",  "%", true )
+       ProcessEvent(  "Temp DC" , jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, true )
+       ProcessEvent(  "Temp Inverter" , jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true )
+       ProcessEvent(  "Temp Master Cell" , jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, tunit, true )
+       ProcessEvent(  "Temp Mppt" , jsonpl.data.quotaMap."mppt.mpptTemp" * mul + adder, tunit, true )
+       if (jsonpl.data.quotaMap."bmsSlave1.temp" != null) ProcessEvent(  "Temp Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true )
+       ProcessEvent( "Time Remain" ,  jsonpl.data.quotaMap."pd.remainTime", "mins", true )
+       ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
+       ProcessEvent(  "Watts DC Out" , jsonpl.data.quotaMap."pd.carWatts", "W", true )
+       ProcessEvent(  "Watts AC In" , jsonpl.data.quotaMap."inv.inputWatts", "W", true )
+       ProcessEvent(  "Watts AC Out" , jsonpl.data.quotaMap."inv.outputWatts", "W", true )
+       //ProcessEvent(  "Watts Master In" , jsonpl.data.quotaMap."bmsMaster.inputWatts", "W", true )
+       //ProcessEvent(  "Watts Master Out" , jsonpl.data.quotaMap."bmsMaster.outputWatts", "W", true )
+       if (jsonpl.data.quotaMap."bmsSlave1.inputWatts" != null ) ProcessEvent(  "Watts Slave In" , jsonpl.data.quotaMap."bmsSlave1.inputWatts", "W", true )
+       if (jsonpl.data.quotaMap."bmsSlave1.outputWatts" != null ) ProcessEvent(  "Watts Slave Out" , jsonpl.data.quotaMap."bmsSlave1.outputWatts", "W", true )
+       ProcessEvent( "Limit Charging Rate" ,  jsonpl.data.quotaMap."inv.cfgSlowChgWatts", "%", true )
+       ProcessEvent( "Limit Discharge" ,  jsonpl.data.quotaMap."bms_emsStatus.minDsgSoc", "%", true )
+       ProcessEvent( "Limit Charge" ,  jsonpl.data.quotaMap."bms_emsStatus.maxChargeSoc", "%", true )
+       ProcessEvent( "SmartGen On Point" ,  jsonpl.data.quotaMap."bms_emsStatus.minOpenOilEb", "%", true )
+       ProcessEvent( "SmartGen Off Point" ,  jsonpl.data.quotaMap."bms_emsStatus.maxCloseOilEb", "%", true )     
+       ProcessEvent( "Limit CarCharge Amps" ,  jsonpl.data.quotaMap."mppt.cfgDcChgCurrent" / 1000, "A", true )
+       ProcessEvent( "Output XBoost" ,  jsonpl.data.quotaMap."mppt.cfgAcXboost", null, true )
+       ProcessEvent( "TimeOut Unit" ,  jsonpl.data.quotaMap."pd.standByMode" / 60 , null, true )
+       ProcessEvent( "TimeOut Screen" ,  jsonpl.data.quotaMap."pd.lcdOffSec" / 60, null, true ) 
+       ProcessEvent( "Timeout AC Output" ,  jsonpl.data.quotaMap."inv.cfgStandbyMin" / 60, null, true )
+       //ProcessEvent( "Timeout DC Output" ,  jsonpl.data.quotaMap."mppt.carStandbyMin" / 60, null, true )
+       ProcessEvent( "DC Charging Watts" ,  jsonpl.data.quotaMap."mppt.inWatts",  null, true )
+       break
     default:
        DCOutput_Enabled = null
        USBOutput_Enabled = null
@@ -342,77 +351,68 @@ def installed() {
    }
    sendEvent(name: "Last Update", value: date, isStateChanged: true)
    //check if output states have changed and update the child's state if required.
-  if (ACOutput_Enabled != state.ACoutput) {
-   state.cdtype = 1
-   def cd = fetchChild("Switch")
-   if (ACOutput_Enabled == 1) {
-      cd.parse([[name: "switch", value: "on", descriptionText: "AC Switch was turned on"]])
-      state.ACoutput = 1
-      state.ACoutputSTR = "Enabled"
-    } else {
-      cd.parse([[name: "switch", value: "off", descriptionText: "AC Switch was turned off"]])
-      state.ACoutput = 0
-      state.ACoutputSTR = "OFF"
-    }
+   if (ACOutput_Enabled != state.ACoutput) {
+      state.cdtype = 1
+      def cd = fetchChild("Switch")
+      if (ACOutput_Enabled == 1) {
+         cd.parse([[name: "switch", value: "on", descriptionText: "AC Switch was turned on"]])
+         state.ACoutput = 1
+      } else {
+         cd.parse([[name: "switch", value: "off", descriptionText: "AC Switch was turned off"]])
+         state.ACoutput = 0
+      }
   }
   if (DCOutput_Enabled != state.DCoutput) {
-    state.cdtype = 2
-    def cd = fetchChild("Switch")
-    if (DCOutput_Enabled == 1) {
-      cd.parse([[name: "switch", value: "on", descriptionText: "DC Switch was turned on"]])
-      state.DCoutput = 1
-      state.DCoutputSTR = "Enabled"
-    } else {
-      cd.parse([[name: "switch", value: "off", descriptionText: "DC Switch was turned off"]])
-      state.DCoutput = 0
-      state.DCoutputSTR = "OFF"
-    }
+     state.cdtype = 2
+     def cd = fetchChild("Switch")
+     if (DCOutput_Enabled == 1) {
+        cd.parse([[name: "switch", value: "on", descriptionText: "DC Switch was turned on"]])
+        state.DCoutput = 1
+     } else {
+        cd.parse([[name: "switch", value: "off", descriptionText: "DC Switch was turned off"]])
+        state.DCoutput = 0
+     }
   }
   if (USBOutput_Enabled != NULL) {
-    if (USBOutput_Enabled != state.USBoutput) {
-      state.cdtype = 3
-      def cd = fetchChild("Switch")
-      if (USBOutput_Enabled == 1) {
-        cd.parse([[name: "switch", value: "on", descriptionText: "USB Switch was turned on"]])
-        state.USBoutput = 1
-        state.USBoutputSTR = "Enabled"
-      } else {
-        cd.parse([[name: "switch", value: "off", descriptionText: "USB Switch was turned off"]])
-        state.USBoutput = 0
-        state.USBoutputSTR = "OFF"
-      }
-    }
+     if (USBOutput_Enabled != state.USBoutput) {
+        state.cdtype = 3
+        def cd = fetchChild("Switch")
+        if (USBOutput_Enabled == 1) {
+           cd.parse([[name: "switch", value: "on", descriptionText: "USB Switch was turned on"]])
+           state.USBoutput = 1
+        } else {
+           cd.parse([[name: "switch", value: "off", descriptionText: "USB Switch was turned off"]])
+           state.USBoutput = 0
+        }
+     }
   }
   if (LEDOutput_Enabled != NULL) {
     if (LEDOutput_Enabled != state.LEDoutput) {
-      state.cdtype = 4
-      def cd = fetchChild("Switch")
-      if (LEDOutput_Enabled == 0) {
-        cd.parse([[name: "switch", value: "off", descriptionText: "LED light was turned off"]])
-        state.LEDoutput = 0
-        state.LEDoutputSTR = "OFF"
-      } else {
-        cd.parse([[name: "switch", value: "on", descriptionText: "LED Light was turned on"]])
-        state.LEDoutput = LEDOutput_Enabled
-        state.LEDoutputSTR = "Enabled"    
-      }
-    }
+       state.cdtype = 4
+       def cd = fetchChild("Switch")
+       if (LEDOutput_Enabled == 0) {
+          cd.parse([[name: "switch", value: "off", descriptionText: "LED light was turned off"]])
+          state.LEDoutput = 0
+       } else {
+          cd.parse([[name: "switch", value: "on", descriptionText: "LED Light was turned on"]])
+          state.LEDoutput = LEDOutput_Enabled
+       }
+     }
   }
- if (XBoost_Enabled != NULL) {
+  if (XBoost_Enabled != NULL) {
     if (XBoost_Enabled != state.XBoost) {
-      state.cdtype = 5
-      def cd = fetchChild("Switch")
-      if (XBoost_Enabled == 0) {
-        cd.parse([[name: "switch", value: "off", descriptionText: "XBoost was turned off"]])
-        state.XBoost = 0
-        state.XBoostSTR = "OFF"
-      } else {
-        cd.parse([[name: "switch", value: "on", descriptionText: "XBoost was turned on"]])
-         state.XBoost = 1
-        state.XBoostSTR = "Enabled"    
-      }
+       state.cdtype = 5
+       def cd = fetchChild("Switch")
+       if (XBoost_Enabled == 0) {
+          cd.parse([[name: "switch", value: "off", descriptionText: "XBoost was turned off"]])
+          state.XBoost = 0
+          state.XBoostSTR = "OFF"
+       } else {
+          cd.parse([[name: "switch", value: "on", descriptionText: "XBoost was turned on"]])
+          state.XBoost = 1
+       }
     }
-  }   
+ }   
   state.reloadData = 1
   UpdateTile()
 }
@@ -422,6 +422,12 @@ def refreshdata() {
   if (state.refreshpayload == null) {
     log.info "model type not found - model input currently set as " + EFmodel
   }
+  if (state.SetUpdateTime > 120 ) {
+    state.reload = 1
+  }else{ 
+    state.reload = state.reload + 1
+    if (state.reload > settings.allrefresh ) state.reload =  1  
+  }   
   ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/get"
   interfaces.mqtt.publish(ptopic, state.refreshpayload)
 }
@@ -438,10 +444,10 @@ def updated() {
   initialize()
 }
 
-def uninstalled() {
-  //   Not a working feature   
-  if (logEnable) log.info "Disconnecting from mqtt"
+def Disconnect() {
+  log.info "Disconnecting from mqtt"
   interfaces.mqtt.disconnect()
+  sendEvent(name: "mqtt Status", value: "OFFLINE", isStateChanged: true)
   log.info "MQTT disconnected"
 
 }
@@ -505,6 +511,8 @@ def initialize() {
     state.SetUpdateTime = settings.updateTime
   }
   state.reloadData = 0
+  state.reload = settings.allrefresh
+  state.tbs = "00:00"
   log.info "reset initialize flag=" + state.reloadData
   mqttConnect()
   refreshdata()
@@ -532,15 +540,17 @@ def mqttConnect() {
       tlsVersion: 1.2)
 
     if (logEnable) log.info "mqtt.con" + mqttConnect
-    //give it a chance to start
-    pauseExecution(1000)
-    //log.info "Connection established"
-    if (logEnable) log.debug "Subscribed to: ${settings?.topicSub}"
-    log.info settings?.topicSub
-    interfaces.mqtt.subscribe(settings?.topicSub)
-  } catch (e) {
-    if (logEnable) log.debug "Initialize error: ${e.message}"
-  }
+       //give it a chance to start
+       pauseExecution(1000)
+       //log.info "Connection established"
+       if (logEnable) log.debug "Subscribed to: ${settings?.topicSub}"
+          log.info settings?.topicSub
+          interfaces.mqtt.subscribe(settings?.topicSub)
+          sendEvent(name: "mqtt Status", value: "Online", isStateChanged: true)
+       } catch (e) {
+       sendEvent(name: "mqtt Status", value: "OFFLINE", isStateChanged: true)  
+       if (logEnable) log.debug "Initialize error: ${e.message}"
+    }
 }
 
 def mqttClientStatus(String status) {
@@ -549,6 +559,7 @@ def mqttClientStatus(String status) {
     try {
       interfaces.mqtt.disconnect()
     } catch (e) {}
+    ProcessEvent( "mqtt Status" , "OFFLINE" , null, true )
     if (logEnable) log.debug "Broker: ${status} Will restart in 15 seconds"
     runIn(15, mqttConnect)
   }
@@ -572,11 +583,8 @@ void ACSwitchON() {
   log.info "ACSwitchON cd on=" + cd
   cd.parse([[name: "switch", value: "on", descriptionText: "AC Switch was turned on"]])
   log.info "AC switch on request"
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + state.AConPayload
-  interfaces.mqtt.publish(ptopic, state.AConPayload)
-  pauseExecution(5000)
-  refreshdata()
+  tempPayload = state.AConPayload
+  RunRequest (tempPayload)
 }
 
 void ACSwitchOFF() {
@@ -584,37 +592,29 @@ void ACSwitchOFF() {
   def cd = fetchChild("Switch")
   log.info "ACSwitchOFF cd off=" + cd
   cd.parse([[name: "switch", value: "off", descriptionText: "AC Switch was turned off"]])
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + state.ACoffPayload
-  interfaces.mqtt.publish(ptopic, state.ACoffPayload)
-  pauseExecution(5000)
-  refreshdata()
+  tempPayload = state.ACoffPayload
+  RunRequest (tempPayload)
 }
+
 void DCSwitchON() {
   state.cdtype = 2
   def cd = fetchChild("Switch")
-  cd.parse([
-    [name: "switch", value: "on", descriptionText: "DC Switch was turned on"]])
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + state.DConPayload
-  interfaces.mqtt.publish(ptopic, state.DConPayload)
-  pauseExecution(5000)
-  refreshdata()
+  cd.parse([[name: "switch", value: "on", descriptionText: "DC Switch was turned on"]])
+  log.info "DC switch on request"
+  tempPayload = state.DConPayload
+  RunRequest (tempPayload)
+ }
 
-}
 void DCSwitchOFF() {
   state.cdtype = 2
   def cd = fetchChild("Switch")
   log.info "DCSwitchOFF cd off=" + cd
   cd.parse([[name: "switch", value: "off", descriptionText: "DC Switch was turned off"]])
   log.info "DC switch off request"
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + state.DCoffPayload
-  interfaces.mqtt.publish(ptopic, state.DCoffPayload)
-  pauseExecution(5000)
-  refreshdata()
+  tempPayload = state.DCoffPayload
+  RunRequest (tempPayload)
+ }
 
-}
 void USBSwitchON() {
   if (EFmodel == "delta2") {
     state.cdtype = 3
@@ -622,12 +622,9 @@ void USBSwitchON() {
     log.info "USBSwitchON cd on=" + cd
     cd.parse([[name: "switch", value: "on", descriptionText: "USB Switch was turned on"]])
     log.info "USB switch on request"
-    ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-    //log.info "topic=" + ptopic + " payload=" + state.USBonPayload
-    interfaces.mqtt.publish(ptopic, state.USBonPayload)
-    pauseExecution(5000)
-    refreshdata()
-  } else {
+    tempPayload = state.USBonPayload
+    RunRequest (tempPayload)
+    } else {
     log.info "USB Switch not supported due to model selection"
   }
 }
@@ -638,11 +635,8 @@ void USBSwitchOFF() {
     log.info "USBSwitchOFF cd off=" + cd
     cd.parse([[name: "switch", value: "off", descriptionText: "USB Switch was turned off"]])
     log.info "USB switch off request"
-    ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-    //log.info "topic=" + ptopic + " payload=" + state.USBoffPayload
-    interfaces.mqtt.publish(ptopic, state.USBoffPayload)
-    pauseExecution(5000)
-    refreshdata()
+    tempPayload = state.USBoffPayload
+    RunRequest (tempPayload)
   } else {
     log.info "USB Switch not supported due to model selection"
   }
@@ -655,11 +649,8 @@ void LEDSwitchON() {
     log.info "LEDSwitchOFF cd on=" + cd
     cd.parse([[name: "switch", value: "on", descriptionText: "LED Light was turned on"]])
     log.info "LED light on request"
-    ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-    //log.info "topic=" + ptopic + " payload=" + state.LEDonPayload
-    interfaces.mqtt.publish(ptopic, state.LEDonPayload)
-    pauseExecution(5000)
-    refreshdata()
+    tempPayload = state.LEDonPayload
+    RunRequest (tempPayload)
   } else {
     log.info "LED Switch not supported due to model selection"
   }
@@ -671,11 +662,8 @@ void LEDSwitchOFF() {
     log.info "LEDSwitchOFF cd off=" + cd
     cd.parse([[name: "switch", value: "off", descriptionText: "LED Light was turned off"]])
     log.info "LED light off request"
-    ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-    //log.info "topic=" + ptopic + " payload=" + state.LEDoffPayload
-    interfaces.mqtt.publish(ptopic, state.LEDoffPayload)
-    pauseExecution(5000)
-    refreshdata()
+    tempPayload = state.LEDoffPayload
+    RunRequest (tempPayload)
   } else {
     log.info "LED Switch not supported due to model selection"
   }
@@ -687,11 +675,8 @@ void XBoostON() {
     log.info "XboostON cd on=" + cd
     cd.parse([[name: "switch", value: "on", descriptionText: "XboostON was turned on"]])
     log.info "XboostON on request"
-    ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-    //log.info "topic=" + ptopic + " payload=" + state.XboostONPayload
-    interfaces.mqtt.publish(ptopic, state.XboostONPayload)
-    pauseExecution(5000)
-    refreshdata()
+    tempPayload = state.XboostONPayload
+    RunRequest (tempPayload)
   } else {
     log.info "Xboost not supported due to model selection"
   }
@@ -703,15 +688,13 @@ void XBoostOFF() {
     log.info "XboostOFF cd off=" + cd
     cd.parse([[name: "switch", value: "off", descriptionText: "XboostOFF was turned off"]])
     log.info "XboostOFF off request"
-    ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-    //log.info "topic=" + ptopic + " payload=" + state.XboostOFFPayload
-    interfaces.mqtt.publish(ptopic, state.XboostOFFPayload)
-    pauseExecution(5000)
-    refreshdata()
+    tempPayload = state.XboostOFFPayload
+    RunRequest (tempPayload)
   } else {
     log.info "Xboost not supported due to model selection"
   }
 }
+
 //get data for switches 1, 2, and 3. If child1 does not exist - create all of them.
 def fetchChild(String type) {
   String thisId = device.id
@@ -755,8 +738,8 @@ void componentOn(cd) {
   case "EF LED Switch":
     LEDSwitchON()
     break
-  case "EF EBoost":
-    XboostON() 
+  case "EF XBoost":
+    XBoostON() 
     break
   }
 }
@@ -778,23 +761,23 @@ void componentOff(cd) {
   case "EF LED Switch":
     LEDSwitchOFF()
     break
-    case "EF EBoost":
-    XboostOFF() 
+    case "EF XBoost":
+    XBoostOFF() 
     break  
    }
 }
 // Process data to check against current state value and then send an event if it has changed
+// After 5 updates - update all attrubites to catch any misses - refresh count in refreshdata() block
 def ProcessEvent(Variable, Value, Unit = null, ForceEvent = false) {
-  if ((state.
-      "${ Variable }" != Value) || (ForceEvent == true)) {
-    state.
-    "${ Variable }" = Value
-    if (Unit != null) {
-       sendEvent(name: "${ Variable }", value: Value, unit: Unit, isStateChanged: true)
-    } else {
-       sendEvent(name: "${ Variable }", value: Value, isStateChanged: true)
-    }
-  }
+    Integer Vtemp = Value
+    if ((state."${ Variable }" != Vtemp) || (state.reload == 1 )) {
+       state."${ Variable }" = Vtemp
+      if (Unit != null) {
+        sendEvent(name: "${ Variable }", value: Vtemp, unit: Unit, isStateChanged: true)
+      } else {
+        sendEvent(name: "${ Variable }", value: Vtemp, isStateChanged: true)
+      }
+   }
 }
 
 private void UpdateTile() {
@@ -803,7 +786,7 @@ private void UpdateTile() {
   val = "DC Temps:" + device.currentValue("Temp DC") + " Mppt Temp:" + device.currentValue("Temp Mppt") + " Master Temp:" + device.currentValue("Temp Master Cell") + " Slave Temp:" + device.currentValue("Temp Slave Cell").toString()
   val1 = "<B>DC Temp:</B>" + device.currentValue("Temp DC") + " <B>Mppt Temp:</B>" + device.currentValue("Temp Mppt") + " <B>Master Temp:</B>" + device.currentValue("Temp Master Cell") + " <B>Slave Temp:</B>" + device.currentValue("Temp Slave Cell").toString()
      if( device.currentValue( "htmlTile1" ).toString() != val1 ){
-        sendEvent( name: "htmlTile1", value: val1 )
+     //   sendEvent( name: "htmlTile1", value: val1 )
      }
 }
 def LimitWattsCharging(cdata) {
@@ -812,11 +795,7 @@ def LimitWattsCharging(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"408451032","moduleType":5,"operateType":"acChgCfg","params":{"chgWatts":${cdata},"chgPauseFlag":255},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =  /{"from":"Android","id":"173871057","moduleType":0,"operateType":"TCP","params":{"slowChgPower":${cdata},"id":69},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =   /{"from":"Android","id":"173871057","moduleType":0,"operateType":"TCP","params":{"slowChgPower":${cdata},"id":69},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def LimitDischarge(cdata) {
@@ -825,11 +804,7 @@ def LimitDischarge(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"432011035","moduleType":2,"operateType":"dsgCfg","params":{"minDsgSoc":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =/ {"from":"Android","id":"175921141","moduleType":0,"operateType":"TCP","params":{"id":51,"minDsgSoc":${cdata}},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =   / {"from":"Android","id":"175921141","moduleType":0,"operateType":"TCP","params":{"id":51,"minDsgSoc":${cdata}},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def LimitCharge(cdata) {
@@ -838,11 +813,7 @@ def LimitCharge(cdata) {
   if (EFmodel == "delta2") tempPayload =   / {"from":"Android","id":"236231052","moduleType":2,"operateType":"upsConfig","params":{"maxChgSoc":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload = / {"from": "Android","id": "288791335","moduleType": 0,"operateType": "TCP","params": {"maxChgSoc": ${cdata},"id": 49},"version": "1.0"}/
   if (EFmodel == "River") tempPayload =    / {"from": "Android","id": "288791335","moduleType": 0,"operateType": "TCP","params": {"maxChgSoc": ${cdata},"id": 49},"version": "1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def SmartGenAutoOFF(cdata) {
@@ -851,11 +822,7 @@ def SmartGenAutoOFF(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"323091083","moduleType":2,"operateType":"closeOilSoc","params":{"closeOilSoc":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =/ {"from":"Android","id":"179771277","moduleType":0,"operateType":"TCP","params":{"closeOilSoc":${cdata},"id":53},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =   / {"from":"Android","id":"179771277","moduleType":0,"operateType":"TCP","params":{"closeOilSoc":${cdata},"id":53},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def SmartGenAutoON(cdata) {
@@ -864,11 +831,7 @@ def SmartGenAutoON(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"115261063","moduleType":2,"operateType":"openOilSoc","params":{"openOilSoc":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =/ {"from":"Android","id":"462251241","moduleType":0,"operateType":"TCP","params":{"openOilSoc":${cdata},"id":52},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =   / {"from":"Android","id":"462251241","moduleType":0,"operateType":"TCP","params":{"openOilSoc":${cdata},"id":52},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def LimitCarInput(cdata) {
@@ -878,11 +841,7 @@ def LimitCarInput(cdata) {
   if (EFmodel == "delta2") tempPayload =   / {"from":"Android","id":"163361090","moduleType":5,"operateType":"dcChgCfg","params":{"dcChgCfg":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload = / {"from":"Android","id":"173801343","moduleType":0,"operateType":"TCP","params":{"currMa":${cdata},"id":71},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =    / {"from":"Android","id":"173801343","moduleType":0,"operateType":"TCP","params":{"currMa":${cdata},"id":71},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def TimeOutUnit(cdata) {
@@ -892,11 +851,7 @@ def TimeOutUnit(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"436891007","moduleType":1,"operateType":"standbyTime","params":{"standbyMin":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =  / {"from":"Android","id":"408451032","moduleType":5,"operateType":"acChgCfg","params":{"chgWatts":${cdata},"chgPauseFlag":255},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =  / {"from":"Android","id":"408451032","moduleType":5,"operateType":"acChgCfg","params":{"chgWatts":${cdata},"chgPauseFlag":255},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def TimeOutScreen(cdata) {
@@ -906,11 +861,7 @@ def TimeOutScreen(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"409551012","moduleType":1,"operateType":"lcdCfg","params":{"brighLevel":255,"delayOff":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =/ {"from":"Android","id":"332691391","moduleType":0,"operateType":"TCP","params":{"lcdTime":${cdata},"id":39},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =   / {"from":"Android","id":"332691391","moduleType":0,"operateType":"TCP","params":{"lcdTime":${cdata},"id":39},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def TimeoutACOutput(cdata) {
@@ -920,11 +871,7 @@ def TimeoutACOutput(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"483091022","moduleType":5,"operateType":"standbyTime","params":{"standbyMins":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =  / {"from":"Android","id":"194911444","moduleType":0,"operateType":"TCP","params":{"standByMins":${cdata},"id":153},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =  / {"from":"Android","id":"194911444","moduleType":0,"operateType":"TCP","params":{"standByMins":${cdata},"id":153},"version":"1.0"}/  
-  ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
-  //log.info "topic=" + ptopic + " payload=" + tempPayload
-  interfaces.mqtt.publish(ptopic, tempPayload)
-  pauseExecution(5000)
-  refreshdata()  
+  RunRequest (tempPayload)
   }
 
 def TimeoutDCOutput(cdata) {
@@ -934,15 +881,16 @@ def TimeoutDCOutput(cdata) {
   if (EFmodel == "delta2") tempPayload =  / {"from":"Android","id":"134031004","moduleType":5,"operateType":"carStandby","params":{"standbyMins":${cdata}},"version":"1.0"}/
   if (EFmodel == "deltapro") tempPayload =/ {"from":"Android","id":"194911444","moduleType":0,"operateType":"TCP","params":{"standByMins":0,"id":0},"version":"1.0"}/
   if (EFmodel == "River") tempPayload =   / {"from":"Android","id":"194911444","moduleType":0,"operateType":"TCP","params":{"standByMins":0,"id":0},"version":"1.0"}/  
+  RunRequest (tempPayload)
+  }
+
+def RunRequest (tempPayload )  {
   ptopic = "/app/" + mqttclientname + "/" + unitserialno + "/thing/property/set"
   //log.info "topic=" + ptopic + " payload=" + tempPayload
   interfaces.mqtt.publish(ptopic, tempPayload)
   pauseExecution(5000)
   refreshdata()  
   }
-
-
- 
 
 
 
