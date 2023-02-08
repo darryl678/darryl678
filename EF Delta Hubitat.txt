@@ -1,4 +1,4 @@
-/**
+/***
  ***********************  ECOFLOW DELTA PRO / DELTA 2 SERIES MQTT HUBITAT DRIVER -   ***************************************
  *               	 
  *  Driver has been tested on DeltaPro and Delta 2 Batteries. Some functions may work with the EF River series, but more
@@ -50,12 +50,12 @@
  *
  *
  *
- *  Changes:             
- *    0.1.0 01/31/2023 - Released for Delta2 and Deltapro - River Battery Model release pending
+ *  Changes:  
+ *    0.1.2 02/08/23     Fxied mapping errors on DP series - roughed in Alwayson feature needs testing
  *    0.1.1 02/03/2023   Added mqtt status of "online" & "OFFLINE" to device’s current states
  *                       Added mqtt disconnect command
  *                       Added code below to reduce events on updates:
- *                       1. Added code to reduce event update loads when using refresh times under 60 sec
+ *                       1. Added code to reduce event update loads when using refresh time under 60 sec
  *                       2. Added feature to update all current device states every X scans to catch any missed "isstatgechanged" flags
  *                       3. Removed decimals from attributes to reduce event loading due to small changes in values
  *                       4. The full list of battery variables is only updated to states variables when debug is active
@@ -63,6 +63,8 @@
  *                       Added "Battery Status" attribute string showing battery time remaining in HH:MM format   
  *                       Added RunRequest() block to reduce repetitive program code
  *                       Fixed XBoost Child switch on/off function  
+ *   0.1.0 01/31/2023 - Released for Delta2 and Deltapro - River Battery Model release pending
+ *    
  *
  */
 
@@ -86,6 +88,8 @@ metadata {
     command "LEDSwitchOFF"
     command "XBoostON"
     command "XBoostOFF"
+    command "PowerUpAcON"
+    command "PowerUpAcOFF"
     command "Disconnect"
     command "refreshdata"
     command "LimitWattsCharging" , ["number"]
@@ -142,6 +146,7 @@ metadata {
     attribute "Timeout DC Output" , "number" 
     attribute "DC Charging Watts" , "number"  
     attribute "mqtt Status" , "string"
+    attribute "AC Always On" , "number"
   }
 
   preferences {
@@ -213,6 +218,7 @@ def parse(String description) {
        USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
        LEDOutput_Enabled = null
        XBoost_Enabled = jsonpl.data.quotaMap."mppt.cfgAcXboost"
+       AcAlways_Enabled = jsonpl.data.quotaMap."inv.acPassByAutoEn"
        sendEvent(name: "power", value: jsonpl.data.quotaMap."inv.outputWatts", unit: "w", isStateChanged: true )
        Integer ttemp = jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder 
        sendEvent(name: "temperature", value: ttemp, unit: tunit, isStateChanged: true )
@@ -263,6 +269,7 @@ def parse(String description) {
        USBOutput_Enabled = null
        LEDOutput_Enabled = jsonpl.data.quotaMap."pd.ledState"
        XBoost_Enabled = null
+       AcAlways_Enabled = jsonpl.data.quotaMap."inv.acPassByAutoEn"
        sendEvent (name: "battery" , vaule: jsonpl.data.quotaMap."pd.soc", unit: "%" )
        sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W" )
        sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."inv.outTemp" * mul + adder, init: tunit)
@@ -299,6 +306,7 @@ def parse(String description) {
        USBOutput_Enabled = null
        LEDOutput_Enabled = null
        XBoost_Enabled = jsonpl.data.quotaMap."mppt.cfgAcXboost"
+       AcAlways_Enabled = jsonpl.data.quotaMap."inv.acPassByAutoEn"
        sendEvent(name: "battery" , value: jsonpl.data.quotaMap."bmsMaster.soc", unit: "%", isStateChanged: true )
        sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
        sendEvent (name: "temperature" , value: jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, unit: tunit, isStateChanged: true )
@@ -306,6 +314,7 @@ def parse(String description) {
        ProcessEvent(  "Output Status DC" , jsonpl.data.quotaMap."mppt.carState", null, true  )
        ProcessEvent(  "Output Status USB" , 0 , null, true )
        ProcessEvent(  "Output Status LED" , 0 , null, true )
+       //ProcessEvent(  "AC Always On" , 
        ProcessEvent(  "Cycles on Master" , jsonpl.data.quotaMap."bmsMaster.cycles", null, true )
        ProcessEvent(  "Cycles on Slave" , jsonpl.data.quotaMap."bmsSlave1.cycles", null, true )
        ProcessEvent(  "Fault Code mppt" , jsonpl.data.quotaMap."mppt.faultCode", null, true )
@@ -321,7 +330,6 @@ def parse(String description) {
        ProcessEvent(  "Temp Mppt" , jsonpl.data.quotaMap."mppt.mpptTemp" * mul + adder, tunit, true )
        if (jsonpl.data.quotaMap."bmsSlave1.temp" != null) ProcessEvent(  "Temp Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true )
        ProcessEvent( "Time Remain" ,  jsonpl.data.quotaMap."pd.remainTime", "mins", true )
-       ProcessEvent( "Battery Status" ,  BatteryStatus, null, true )
        ProcessEvent(  "Watts DC Out" , jsonpl.data.quotaMap."pd.carWatts", "W", true )
        ProcessEvent(  "Watts AC In" , jsonpl.data.quotaMap."inv.inputWatts", "W", true )
        ProcessEvent(  "Watts AC Out" , jsonpl.data.quotaMap."inv.outputWatts", "W", true )
@@ -341,6 +349,7 @@ def parse(String description) {
        ProcessEvent( "Timeout AC Output" ,  jsonpl.data.quotaMap."inv.cfgStandbyMin" / 60, null, true )
        //ProcessEvent( "Timeout DC Output" ,  jsonpl.data.quotaMap."mppt.carStandbyMin" / 60, null, true )
        ProcessEvent( "DC Charging Watts" ,  jsonpl.data.quotaMap."mppt.inWatts",  null, true )
+       
        break
     default:
        DCOutput_Enabled = null
@@ -412,7 +421,20 @@ def parse(String description) {
           state.XBoost = 1
        }
     }
- }   
+  }   
+  if (AcAlways_Enabled != NULL) {
+    if (AcAlways_Enabled != state.AcAlways) {
+       state.cdtype = 6
+       def cd = fetchChild("Switch")
+       if (AcAlways_Enabled == 0) {
+          cd.parse([[name: "switch", value: "off", descriptionText: "AcAlways was turned off"]])
+          state.AcAlways = 0
+       } else {
+          cd.parse([[name: "switch", value: "on", descriptionText: "AcAlways was turned on"]])
+          state.AcAlways = 1
+       }
+    }
+  }     
   state.reloadData = 1
   UpdateTile()
 }
@@ -468,6 +490,8 @@ def initialize() {
     state.refreshpayload = /{"from":"Android","id":"380541001","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/
     state.XboostONPayload = /{"from":"Android","id":"153151096","moduleType":5,"operateType":"acOutCfg","params":{"out_voltage":-1,"out_freq":255,"xboost":1,"enabled":255},"version":"1.0"}/
     state.XboostOFFPayload = /{"from":"Android","id":"157161098","moduleType":5,"operateType":"acOutCfg","params":{"out_voltage":-1,"out_freq":255,"xboost":0,"enabled":255},"version":"1.0"}/
+    state.AcAlwaysOFFPayload = /{"from": "Android","id": "435361475","moduleType": 0,"operateType": "TCP","params": {"id": 84,"enabled": 0},"version": "1.0"} /
+    state.AcAlwaysONPayload =  /{"from": "Android","id": "435361475","moduleType": 0,"operateType": "TCP","params": {"id": 84,"enabled": 1},"version": "1.0"} / 
     break
   case "river":
     state.AConPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 66,"enabled": 1},"version":"1.0"}/
@@ -479,6 +503,9 @@ def initialize() {
     state.LEDonPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 35,"state": 1},"version": "1.0"}/
     state.LEDoffPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 35,"state": 0},"version": "1.0"}/
     state.refreshpayload = /{"from":"Android","id":"380541001","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/
+    state.AcAlwaysOFFPayload = /{"from": "Android","id": "435361475","moduleType": 0,"operateType": "TCP","params": {"id": 84,"enabled": 0},"version": "1.0"} /
+    state.AcAlwaysONPayload =  /{"from": "Android","id": "435361475","moduleType": 0,"operateType": "TCP","params": {"id": 84,"enabled": 1},"version": "1.0"} / 
+      
     break
   case "deltapro":
     state.AConPayload = /{"from": "Android","id": "498321003","moduleType": 0,"operateType":"TCP","params": {"id": 66,"enabled": 1},"version":"1.0"}/
@@ -492,6 +519,8 @@ def initialize() {
     state.refreshpayload = /{"from":"Android","id":"380541001","moduleType":0,"operateType":"latestQuotas","params":{},"version":"1.0"}/
     state.XboostONPayload = /{"from": "Android","id": "476501541","moduleType": 0,"operateType": "TCP","params": {"xboost": 1,"id": 66},"version": "1.0"} /
     state.XboostOFFPayload = /{"from": "Android","id": "476501541","moduleType": 0,"operateType": "TCP","params": {"xboost": 0,"id": 66},"version": "1.0"} /
+    state.AcAlwaysOFFPayload = /{"from": "Android","id": "435361475","moduleType": 0,"operateType": "TCP","params": {"id": 84,"enabled": 0},"version": "1.0"} /
+    state.AcAlwaysONPayload =  /{"from": "Android","id": "435361475","moduleType": 0,"operateType": "TCP","params": {"id": 84,"enabled": 1},"version": "1.0"} /  
     break
   default:
     state.AConPayload = null
@@ -554,12 +583,12 @@ def mqttConnect() {
 }
 
 def mqttClientStatus(String status) {
-  log.info "mqttClientStatus dd"
+  log.info "mqttClientStatus"
   if (!status.contains("succeeded")) {
     try {
       interfaces.mqtt.disconnect()
     } catch (e) {}
-    ProcessEvent( "mqtt Status" , "OFFLINE" , null, true )
+    sendEvent(name: "mqtt Status", value: "OFFLINE", isStateChanged: true)
     if (logEnable) log.debug "Broker: ${status} Will restart in 15 seconds"
     runIn(15, mqttConnect)
   }
@@ -580,7 +609,7 @@ void componentRefresh(cd) {
 void ACSwitchON() {
   state.cdtype = 1
   def cd = fetchChild("Switch")
-  log.info "ACSwitchON cd on=" + cd
+  //log.info "ACSwitchON cd on=" + cd
   cd.parse([[name: "switch", value: "on", descriptionText: "AC Switch was turned on"]])
   log.info "AC switch on request"
   tempPayload = state.AConPayload
@@ -590,7 +619,7 @@ void ACSwitchON() {
 void ACSwitchOFF() {
   state.cdtype = 1
   def cd = fetchChild("Switch")
-  log.info "ACSwitchOFF cd off=" + cd
+  //log.info "ACSwitchOFF cd off=" + cd
   cd.parse([[name: "switch", value: "off", descriptionText: "AC Switch was turned off"]])
   tempPayload = state.ACoffPayload
   RunRequest (tempPayload)
@@ -608,7 +637,7 @@ void DCSwitchON() {
 void DCSwitchOFF() {
   state.cdtype = 2
   def cd = fetchChild("Switch")
-  log.info "DCSwitchOFF cd off=" + cd
+  //log.info "DCSwitchOFF cd off=" + cd
   cd.parse([[name: "switch", value: "off", descriptionText: "DC Switch was turned off"]])
   log.info "DC switch off request"
   tempPayload = state.DCoffPayload
@@ -619,7 +648,7 @@ void USBSwitchON() {
   if (EFmodel == "delta2") {
     state.cdtype = 3
     def cd = fetchChild("Switch")
-    log.info "USBSwitchON cd on=" + cd
+    //log.info "USBSwitchON cd on=" + cd
     cd.parse([[name: "switch", value: "on", descriptionText: "USB Switch was turned on"]])
     log.info "USB switch on request"
     tempPayload = state.USBonPayload
@@ -632,7 +661,7 @@ void USBSwitchOFF() {
   if (EFmodel == "delta2") {
     state.cdtype = 3
     def cd = fetchChild("Switch")
-    log.info "USBSwitchOFF cd off=" + cd
+    //log.info "USBSwitchOFF cd off=" + cd
     cd.parse([[name: "switch", value: "off", descriptionText: "USB Switch was turned off"]])
     log.info "USB switch off request"
     tempPayload = state.USBoffPayload
@@ -646,7 +675,7 @@ void LEDSwitchON() {
   if (EFmodel == "river") {
     state.cdtype = 4
     def cd = fetchChild("Switch")
-    log.info "LEDSwitchOFF cd on=" + cd
+    //log.info "LEDSwitchOFF cd on=" + cd
     cd.parse([[name: "switch", value: "on", descriptionText: "LED Light was turned on"]])
     log.info "LED light on request"
     tempPayload = state.LEDonPayload
@@ -659,7 +688,7 @@ void LEDSwitchOFF() {
   if (EFmodel == "river") {
     state.cdtype = 4
     def cd = fetchChild("Switch")
-    log.info "LEDSwitchOFF cd off=" + cd
+    //log.info "LEDSwitchOFF cd off=" + cd
     cd.parse([[name: "switch", value: "off", descriptionText: "LED Light was turned off"]])
     log.info "LED light off request"
     tempPayload = state.LEDoffPayload
@@ -672,7 +701,7 @@ void XBoostON() {
   if (EFmodel == "deltapro" || "delta2 ") {
     state.cdtype = 5
     def cd = fetchChild("Switch")
-    log.info "XboostON cd on=" + cd
+    //log.info "XboostON cd on=" + cd
     cd.parse([[name: "switch", value: "on", descriptionText: "XboostON was turned on"]])
     log.info "XboostON on request"
     tempPayload = state.XboostONPayload
@@ -685,7 +714,7 @@ void XBoostOFF() {
   if (EFmodel == "deltapro"  || "delta2" )   {
     state.cdtype = 5
     def cd = fetchChild("Switch")
-    log.info "XboostOFF cd off=" + cd
+    //log.info "XboostOFF cd off=" + cd
     cd.parse([[name: "switch", value: "off", descriptionText: "XboostOFF was turned off"]])
     log.info "XboostOFF off request"
     tempPayload = state.XboostOFFPayload
@@ -694,28 +723,57 @@ void XBoostOFF() {
     log.info "Xboost not supported due to model selection"
   }
 }
+void PowerUpAcON() {
+  if (EFmodel == "deltapro" || "delta2 ") {
+    state.cdtype = 6
+    def cd = fetchChild("Switch")
+    //log.info "AcAlways cd on=" + cd
+    cd.parse([[name: "switch", value: "on", descriptionText: "PowerUpAc was turned on"]])
+    log.info "PowerUpAc on request"
+    tempPayload = state.AcAlwaysONPayload
+    RunRequest (tempPayload)
+  } else {
+    log.info "ACAlways not supported due to model selection"
+  }
+}
+void PowerUpAcOFF() {
+  if (EFmodel == "deltapro"  || "delta2" )   {
+    state.cdtype = 6
+    def cd = fetchChild("Switch")
+   // log.info "PowerUpAc cd off=" + cd
+    cd.parse([[name: "switch", value: "off", descriptionText: "PowerUpAc was turned off"]])
+    log.info "PowerUpAc off request"
+    tempPayload = state.AcAlwaysOFFPayload
+    RunRequest (tempPayload)
+  } else {
+    log.info "ACAlways not supported due to model selection"
+  }
+}
 
 //get data for switches 1, 2, and 3. If child1 does not exist - create all of them.
 def fetchChild(String type) {
   String thisId = device.id
-  //log.info "fetchChild run >> thisID=" + thisId + " cdtype=" + state.cdtype
+  log.info "fetchChild run >> thisID=" + thisId + " cdtype=" + state.cdtype
   def cd = getChildDevice("${thisId}${state.cdtype}-Switch")
-  //log.info "fetchchild CD=" + cd
+  log.info "fetchchild CD=" + cd
   if (cd == null) {
-    cd = addChildDevice("hubitat", "Generic Component Switch", "${thisId}1-Switch", [name: "EF AC Switch", isComponent: true])
-    cd1 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}2-Switch", [name: "EF DC Switch", isComponent: true])
+    if (state.cdtype == 1) cd1 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}1-Switch", [name: "EF AC Switch", isComponent: true])
+    if (state.cdtype == 2) cd2 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}2-Switch", [name: "EF DC Switch", isComponent: true])
     if (EFmodel == "delta2") {
-       cd2 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}3-Switch", [name: "EF USB Switch", isComponent: true])
-       cd3 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}5-Switch", [name: "EF XBoost", isComponent: true])     
+      if (state.cdtype == 3 )   cd3 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}3-Switch", [name: "EF USB Switch", isComponent: true])
+      if (state.cdtype == 5 )   cd5 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}5-Switch", [name: "EF XBoost", isComponent: true])
+      if (state.cdtype == 6 )   cd6 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}6-Switch", [name: "EF AcAlways", isComponent: true])
     }
     if (EFmodel == "river") {
-      cd3 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}4-Switch", [name: "EF LED Switch", isComponent: true])
+      if (state.cdtype == 4 )  cd4 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}4-Switch", [name: "EF LED Switch", isComponent: true])
     }
     if (EFmodel == "deltapro") {
-      cd3 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}5-Switch", [name: "EF XBoost", isComponent: true]) 
+      if (state.cdtype == 5 )  cd5 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}5-Switch", [name: "EF XBoost", isComponent: true]) 
+      if (state.cdtype == 6 )  cd6 = addChildDevice("hubitat", "Generic Component Switch", "${thisId}6-Switch", [name: "EF AcAlways", isComponent: true])
     }   
    log.info "type=" + type + " thisid=" + thisId + "displayname=" + device.displayName
-    List < Map > defaultValues = []
+   
+      List < Map > defaultValues = []
     cd.parse(defaultValues)
   }
   return cd
@@ -741,7 +799,10 @@ void componentOn(cd) {
   case "EF XBoost":
     XBoostON() 
     break
-  }
+  case "EF AcAlways":
+    PowerUpAcON()   
+    break 
+   }
 }
 
 // child has requested state change to OFF - determine what child is asking for change and run sequence to update device
@@ -763,7 +824,10 @@ void componentOff(cd) {
     break
     case "EF XBoost":
     XBoostOFF() 
-    break  
+    break 
+  case "EF AcAlways":
+    PowerUpAcOFF()   
+    break 
    }
 }
 // Process data to check against current state value and then send an event if it has changed
