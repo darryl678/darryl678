@@ -1,9 +1,13 @@
-***
- ***********************  ECOFLOW DELTA PRO / DELTA2 / RIVER SERIES MQTT HUBITAT DRIVER -   *********************************
- *               	 
- *  Driver has been tested on DeltaPro and Delta 2 and River Pro Batteries. 
- *          	 
- *                     	 
+/*                                      >>>>>THIS DRIVER IS FOR REFERENCE ONLY<<<<<<                                                
+                          Due to changes with EF MQTT Broker the driver will not longer connect to the broker      	
+                                                           3/15/23 
+                                 Reach out to me at Hubitat @daryl678 for other possible solutions 
+ 
+ ***********************  ECOFLOW DELTA PRO / DELTA2 / RIVER SERIES MQTT HUBITAT DRIVER -   *******************************
+ *          		 
+ *  Driver has been tested on DeltaPro and Delta 2 and River Pro Batteries.
+ *     		 
+ *                		 
  *  D. Dimond 01/31/2023
  *  Hubitat @daryl678
  *
@@ -12,7 +16,7 @@
  *  The driver will create child switches based on the model. The Delta2: AC, DC, & USB. The Delta Pro: AC & DC. The River
  *  AC, DC, and LED light.
  *    
- *  	 
+ * 	 
  *  There is a lot of battery data - The driver loads a small collection to current device states. All data points are added
  *  to the state variables and are updated when debug is active.
  *    
@@ -20,9 +24,9 @@
  *
  *************************************** Special Instructions ******************************************************************
  *  A procedure is required to obtain your MQTT access keys. See GitHub folder for MQTT key instructions to obtain your MQTT   *
- *  keys. Or follow this link to grab the instructions:                                                                        *
- *  https://github.com/darryl678/darryl678/blob/Hubitat-EF-Delta-Driver/Accessing-EF-.docx                                    *
- *********************************************************** *******************************************************************           
+ *  keys. Or follow this link to grab the instructions:                                                                    	*
+ *  https://github.com/darryl678/darryl678/blob/Hubitat-EF-Delta-Driver/Accessing-EF-.docx                                 	*
+ *********************************************************** *******************************************************************      	 
  *   
  *  This driver does not support the deletion of child devices. If changing the battery model after initialization clear child
  *  devices out manually by loading your device with the internal Hubitat driver called DEVICE and clear out child devices.
@@ -47,39 +51,43 @@
  *
  *
  *
- *     Changes:                    
- *    0.1.4 3/12/23 -     15 - added error processing so driver recovers from internet connection loss
- *                        14 - fixed temp device states for D2
- *                        13 - added slave2 SOC for DPEB - corrected "Watts DC In" for DP - added temps for slave1&2 DPEB
- *                        12 - MQTT status 0=MQTT offline 1=Mqtt & battery online 2=MQTT online & battery offline
- *                        11 -Added LED control bits for River Battery 
- *                        10 -Fixed errors generated during first run of child devices
- *                        9 -Add code to check for Broker online but battery is offline.            
- *                        8 ** Device attribute name chnage "DC Charging Watts" is now "Watts DC In" **
- *                        7 -Added energy tracking feature
- *                        6 -Debugged code to support EF river pro batteries (other River models not tested)
- *                        5 -Fix "pd.remainTime"pd null errors happening on some DP units
- *                        4 -Added code to stop the 3-second data update when the EF app is in use.
- *                        3 -Removed topic from inside parse() command - clean up of redundant code
- *                        2 -Blocked or removed log.info requests that were used for driver development
- *                        1 -"Output AC Always" status bit added to device current states.
+ * 	Changes:               	 
+ *   0.1.5 3/16/23    	17 Driver broken due to EF MQTT client name filtering - This driver no longer works
+ *                    	16 changes made to state variable loading and add extra battery name support.  
  *
- *    0.1.3 02/09/23     Fixed more mapping errors on DP series - Added AlwaysON child switch - fix bug with state variable loading
- *    0.1.2 02/08/23     Fixed mapping errors on DP series - roughed in Alwayson feature needs testing
- *    0.1.0 01/31/2023 - Released for Delta2 and Deltapro - River Battery Model release pending
- *    0.1.1 02/03/2023   Added mqtt status of "online" & "OFFLINE" to device’s current states
- *                       Added mqtt disconnect command
- *                       Added code below to reduce events on updates:
- *                       1. Added code to reduce event update loads when using refresh time under 60 sec
- *                       2. Added feature to update all current device states every X scans to catch any missed "isstatgechanged" flags
- *                       3. Removed decimals from attributes to reduce event loading due to small changes in values
- *                       4. The full list of battery variables is only updated to states variables when debug is active
- *                       5. The feature to log changes to state variables is only active when debug is active.
- *                       Added "Battery Status" attribute string showing battery time remaining in HH:MM format   
- *                       Added RunRequest() block to reduce repetitive program code
- *                       Fixed XBoost Child switch on/off function  
+ *   0.1.4 3/12/23 -  	15 - added error processing so driver recovers from internet connection loss
+ *                    	14 - fixed temp device states for D2
+ *                    	13 - added slave2 SOC for DPEB - corrected "Watts DC In" for DP - added temps for slave1&2 DPEB
+ *                    	12 - MQTT status 0=MQTT offline 1=Mqtt & battery online 2=MQTT online & battery offline
+ *                    	11 -Added LED control bits for River Battery
+ *                    	10 -Fixed errors generated during first run of child devices
+ *                    	9 -Add code to check for Broker online but battery is offline.       	 
+ *                    	8 ** Device attribute name change "DC Charging Watts" is now "Watts DC In" **
+ *                    	7 -Added energy tracking feature
+ *                    	6 -Debugged code to support EF river pro batteries (other River models not tested)
+ *                    	5 -Fix "pd.remainTime"pd null errors happening on some DP units
+ *                    	4 -Added code to stop the 3-second data update when the EF app is in use.
+ *                    	3 -Removed topic from inside parse() command - clean up of redundant code
+ *                    	2 -Blocked or removed log.info requests that were used for driver development
+ *                    	1 -"Output AC Always" status bit added to device current states.
+ *
+ *	0.1.3 02/09/23 	Fixed more mapping errors on DP series - Added AlwaysON child switch - fix bug with state variable loading
+ *	0.1.2 02/08/23 	Fixed mapping errors on DP series - roughed in Alwayson feature needs testing
+ *	0.1.0 01/31/2023 - Released for Delta2 and Deltapro - River Battery Model release pending
+ *	0.1.1 02/03/2023   Added mqtt status of "online" & "OFFLINE" to device’s current states
+ *                   	Added mqtt disconnect command
+ *                   	Added code below to reduce events on updates:
+ *                   	1. Added code to reduce event update loads when using refresh time under 60 sec
+ *                   	2. Added feature to update all current device states every X scans to catch any missed "isstatgechanged" flags
+ *                   	3. Removed decimals from attributes to reduce event loading due to small changes in values
+ *                   	4. The full list of battery variables is only updated to states variables when debug is active
+ *                   	5. The feature to log changes to state variables is only active when debug is active.
+ *                   	Added "Battery Status" attribute string showing battery time remaining in HH:MM format   
+ *                   	Added RunRequest() block to reduce repetitive program code
+ *                   	Fixed XBoost Child switch on/off function  
  *
  */
+
 
 
 import groovy.json.JsonSlurper;
@@ -119,7 +127,8 @@ metadata {
     command "LEDControlBits0123", ["number"]
 
     attribute "Cycles on Master", "number"
-    attribute "Cycles on Slave", "number"
+    attribute "Cycles on Slave1", "number"
+    attribute "Cycles on Slave2", "number"
     attribute "Output Status AC", "number"
     attribute "Output Status DC", "number"
     attribute "Output Status USB", "number"
@@ -127,16 +136,18 @@ metadata {
     attribute "Output XBoost" , "number"
     attribute "Fault Code mppt", "number"
     attribute "Fault Master Cell", "number"
-    attribute "Fault Slave Cell", "number"
+    attribute "Fault Slave1 Cell", "number"
+    attribute "Fault Slave2 Cell", "number"
     attribute "SOC Master Cell", "number"
-    attribute "SOC Master Display", "number"
-    attribute "SOC Slave Cell", "number"
+    attribute "SOC Slave1 Cell", "number"
     attribute "SOC Slave2 Cell", "number"
-    attribute "SOC Slave Display", "number"
+    attribute "SOC Master Display", "number"
+    attribute "SOC Slave1 Display", "number"
+    attribute "SOC Slave2 Display", "number"
     attribute "Temp DC", "number"
     attribute "Temp Mppt", "number"
     attribute "Temp Master Cell", "number"
-    attribute "Temp Slave Cell", "number"
+    attribute "Temp Slave1 Cell", "number"
     attribute "Temp Slave2 Cell", "number"
     attribute "Temp Inverter Out", "number"
     attribute "Temp Inverter In", "number"
@@ -183,7 +194,7 @@ metadata {
     input("EnergyCalculator", "bool", title: "Energy Calculator", required: false, defaultValue: true)
     input name: "updateTime", type: "number", title: "Background Data Refresh Rate (Seconds) 60 recommended - minimum is 15", required: false, defaultValue: 60, displayDuringSetup: true
     input name: "allrefresh", type: "number", title: "Number of changed only updates before all current states are updated - 60 recommended", required: true, defaultValue: 60, displayDuringSetup: true
-    input(name: "htmlTemplate1", type: "string", title: "<b>Tile Template</b>", description: "<font size='2'>Ex: [b]Remaining Minutes:[/b] \${ remainMins }V[/br]</font>", defaultValue: "");
+    //input(name: "htmlTemplate1", type: "string", title: "<b>Tile Template</b>", description: "<font size='2'>Ex: [b]Remaining Minutes:[/b] \${ remainMins }V[/br]</font>", defaultValue: "");
   }
 }
 
@@ -213,16 +224,12 @@ def parse(String description) {
         log.info "Updating " + EFmodel + " data"
         // scan through each JSON point - Process data
         jsonpl.data.quotaMap.each {
-        if (state.firstrun == null) state.firstrun = 0
-          if (logEnable  || state.firstrun == 0 ) {
-            if (state."${ it.key }" != it.value) {
-              oldstatevar = state."${ it.key }"
-              state."${ it.key }" = it.value // load all the state values for display in device states
-              if (oldstatevar != null ) log.info "Battery variable>>" + it.key + "<< old value:* " + oldstatevar + " NEW VALUE: *** " + it.value  //flag battery variable changes to info log
-            }
+        if (state."${ it.key }" != it.value) {
+          oldstatevar = state."${ it.key }"
+          state."${ it.key }" = it.value // load all the state values for display in device states
+          if (logEnable ) log.info "Battery variable>>" + it.key + "<< old value:* " + oldstatevar + " NEW VALUE: *** " + it.value  //flag battery variable changes to info log
           }
         }
-        state.firstrun = 1   
         if (tempF == "F") { //check if temp request is C or F
           mul = 9 / 5
           adder = 32
@@ -237,7 +244,8 @@ def parse(String description) {
         Integer timermMIN = timerm - timermHR * 60
         BatteryStatus = timermHR + ":" + timermMIN
         if (BatteryStatus != state.tbs ) {
-          sendEvent(name: "Battery Status", value: BatteryStatus, isStateChanged: true )
+          //sendEvent(name: "Battery Status", value: BatteryStatus, isStateChanged: true )
+          ProcessEvent( "Battery Status" , BatteryStatus, null, true )
           state.tbs = BatteryStatus
         }
         // Get JSON varaible for device outputs - case by model
@@ -250,38 +258,42 @@ def parse(String description) {
          USBOutput_Enabled = jsonpl.data.quotaMap."pd.dcOutState"
          LEDOutput_Enabled = null
          XBoost_Enabled = jsonpl.data.quotaMap."mppt.cfgAcXboost"
-         sendEvent(name: "power", value: jsonpl.data.quotaMap."inv.outputWatts", unit: "w", isStateChanged: true )
-         Integer ttemp = jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder 
-         sendEvent(name: "temperature", value: ttemp, unit: tunit, isStateChanged: true )
-         sendEvent(name: "battery", value:  jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", unit: "%", isStateChanged: true )
-         ProcessEvent( "Output Status AC",  jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true )
-         ProcessEvent( "Output Status DC" , jsonpl.data.quotaMap."mppt.carState", null, true )
-         ProcessEvent( "Output Status USB" ,jsonpl.data.quotaMap."pd.dcOutState", null, true )
+         ProcessEvent( "power" ,    jsonpl.data.quotaMap."inv.outputWatts", "w", true  ) 
+         ProcessEvent( "temperature" ,       (jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder as int), tunit, true  )
+         ProcessEvent( "battery" ,            jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", "%", true  ) 
+         ProcessEvent( "Output Status AC",    jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true )
+         ProcessEvent( "Output Status DC" ,   jsonpl.data.quotaMap."mppt.carState", null, true )
+         ProcessEvent( "Output Status USB" ,  jsonpl.data.quotaMap."pd.dcOutState", null, true )
          ProcessEvent( "Output Status LED" , 0 , null, true )
-         ProcessEvent(  "Output AC Always" ,jsonpl.data.quotaMap."pd.acAutoOnCfg", null, true)
-         ProcessEvent( "Cycles on Master" , jsonpl.data.quotaMap."bms_bmsStatus.cycles", null, true  )
-         if (jsonpl.data.quotaMap."bms_slave.cycles" != null)     ProcessEvent( "Cycles on Slave" ,  jsonpl.data.quotaMap."bms_slave.cycles", null, true  )
+         ProcessEvent( "Output AC Always" ,   jsonpl.data.quotaMap."pd.acAutoOnCfg", null, true)
+         ProcessEvent( "Cycles on Master" ,   jsonpl.data.quotaMap."bms_bmsStatus.cycles", null, true  )
+         if (jsonpl.data.quotaMap."bms_slave.cycles" != null)     ProcessEvent( "Cycles on Slave1" ,  jsonpl.data.quotaMap."bms_slave.cycles", null, true  )
+         if (jsonpl.data.quotaMap."bms_slave.cycles" == null)     ProcessEvent( "Cycles on Slave1" ,  0, null, true  )
          ProcessEvent( "Fault Code mppt" ,    jsonpl.data.quotaMap."mppt.faultCode", null, true  )
          ProcessEvent( "Fault Master Cell" ,  jsonpl.data.quotaMap."bms_bmsStatus.bmsFault", null, true  )
-         if (jsonpl.data.quotaMap."bms_slave.bmsFault" != null)   ProcessEvent( "Fault Slave Cell" ,  jsonpl.data.quotaMap."bms_slave.bmsFault", null, true  )
-         ProcessEvent( "SOC Master Cell" ,    jsonpl.data.quotaMap."bms_bmsStatus.f32ShowSoc", "%", true  )
+         if (jsonpl.data.quotaMap."bms_slave.bmsFault" != null)   ProcessEvent( "Fault Slave1 Cell" ,  jsonpl.data.quotaMap."bms_slave.bmsFault", null, true  )
+         if (jsonpl.data.quotaMap."bms_slave.bmsFault" == null)   ProcessEvent( "Fault Slave1 Cell" ,  0, null, true  )
+         ProcessEvent( "SOC Master Cell" ,    (jsonpl.data.quotaMap."bms_bmsStatus.f32ShowSoc" as int), "%", true  )
          ProcessEvent( "SOC Master Display",  jsonpl.data.quotaMap."bms_emsStatus.lcdShowSoc", "%", true )
-         if (jsonpl.data.quotaMap."bms_slave.soc" != null)        ProcessEvent( "SOC Slave Cell" ,  jsonpl.data.quotaMap."bms_slave.soc", "%", true  )
-         if (jsonpl.data.quotaMap."bmsSlave1.soc" != null)        ProcessEvent( "SOC Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.soc", "%", true  )
-         if (jsonpl.data.quotaMap."bmsSlave2.soc" != null )       ProcessEvent( "SOC Slave2 Cell" ,   jsonpl.data.quotaMap."bmsSlave2.soc", "%",  true ) 
-         //if (jsonpl.data.quotaMap."bms_slave.f32ShowSoc" != null) ProcessEvent( "SOC Slave Display" , jsonpl.data.quotaMap."bms_slave.f32ShowSoc", "%", true )
-         ProcessEvent( "Temp DC" ,            jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, true )
-         ProcessEvent( "Temp Inverter Out",   jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true  )
-         ProcessEvent( "Temp Master Cell" ,   jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder, tunit, true  )
-         ProcessEvent( "Temp Mppt" ,          jsonpl.data.quotaMap."mppt.mpptTemp"* mul + adder , tunit, ture  )
-         if (jsonpl.data.quotaMap."bms_slave.temp"  != null)      ProcessEvent( "Temp Slave Cell" , jsonpl.data.quotaMap."bms_slave.temp" * mul + adder , tunit, true  )
+         if (jsonpl.data.quotaMap."bms_slave.soc" != null)        ProcessEvent( "SOC Slave1 Cell" ,  jsonpl.data.quotaMap."bms_slave.soc", "%", true  )
+         if (jsonpl.data.quotaMap."bms_slave.soc" == null)        ProcessEvent( "SOC Slave1 Cell" ,  0 , "%", true  )
+         if (jsonpl.data.quotaMap."bms_slave.f32ShowSoc" != null) ProcessEvent( "SOC Slave1 Display" , (jsonpl.data.quotaMap."bms_slave.f32ShowSoc" as int), "%", true )
+         if (jsonpl.data.quotaMap."bms_slave.f32ShowSoc" == null) ProcessEvent( "SOC Slave1 Display" , 0 , "%", true )
+         ProcessEvent( "Temp DC" ,            (jsonpl.data.quotaMap."pd.carTemp"  * mul + adder as int), tunit, true )
+         ProcessEvent( "Temp Inverter Out",   (jsonpl.data.quotaMap."inv.outTemp" * mul + adder as int), tunit, true  )
+         ProcessEvent( "Temp Master Cell" ,   (jsonpl.data.quotaMap."bms_bmsStatus.temp" * mul + adder as int), tunit, true  )
+         ProcessEvent( "Temp Mppt" ,          (jsonpl.data.quotaMap."mppt.mpptTemp"* mul + adder as int), tunit, ture  )
+         if (jsonpl.data.quotaMap."bms_slave.temp"  != null)      ProcessEvent( "Temp Slave Cell" , (jsonpl.data.quotaMap."bms_slave.temp" * mul + adder as int) , tunit, true  )
+         if (jsonpl.data.quotaMap."bms_slave.temp"  == null)      ProcessEvent( "Temp Slave Cell" , "N/A" , tunit, true  ) 
          ProcessEvent( "Time Remain" ,        jsonpl.data.quotaMap."pd.remainTime", "mins", true )
          ProcessEvent( "Watts DC Out" ,       jsonpl.data.quotaMap."pd.carWatts", "W", true )
          ProcessEvent( "Watts DC In" ,        jsonpl.data.quotaMap."pd.chgPowerDC", "W", true )  
          ProcessEvent( "Watts AC In" ,        jsonpl.data.quotaMap."inv.inputWatts", "W", true )
          ProcessEvent( "Watts AC Out" ,       jsonpl.data.quotaMap."inv.outputWatts", "W", true )
-         if (jsonpl.data.quotaMap."bms_slave.inputWatts"  != null) ProcessEvent( "Watts Slave In" ,  jsonpl.data.quotaMap."bms_slave.inputWatts", "W", true )
-         if (jsonpl.data.quotaMap."bms_slave.outputWatts" != null) ProcessEvent( "Watts Slave Out" ,  jsonpl.data.quotaMap."bms_slave.outputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bms_slave.inputWatts"  != null) ProcessEvent( "Watts Slave1 In" ,  jsonpl.data.quotaMap."bms_slave.inputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bms_slave.inputWatts"  == null) ProcessEvent( "Watts Slave1 In" ,  0, "W", true ) 
+         if (jsonpl.data.quotaMap."bms_slave.outputWatts" != null) ProcessEvent( "Watts Slave1 Out" ,  jsonpl.data.quotaMap."bms_slave.outputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bms_slave.outputWatts" == null) ProcessEvent( "Watts Slave1 Out" , 0, "W", true ) 
          ProcessEvent( "Limit Charging Rate" ,jsonpl.data.quotaMap."mppt.cfgChgWatts", "%", true )
          ProcessEvent( "Limit Discharge" ,    jsonpl.data.quotaMap."bms_emsStatus.minDsgSoc", "%", true )
          ProcessEvent( "Limit Charge" ,       jsonpl.data.quotaMap."bms_emsStatus.maxChargeSoc", "%", true )
@@ -301,27 +313,25 @@ def parse(String description) {
          USBOutput_Enabled = null
          LEDOutput_Enabled = jsonpl.data.quotaMap."pd.ledState"
          AcAlways_Enabled  = jsonpl.data.quotaMap."inv.acPassByAutoEn"
-         sendEvent (name: "battery" , value: jsonpl.data.quotaMap."bmsMaster.soc", unit: "%", isStateChanged: true )
-         sendEvent (name: "power" , value: jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
-         Integer ttemp = jsonpl.data.quotaMap."inv.outTemp" * mul + adder
-         sendEvent(name: "temperature", value: ttemp, unit: tunit, isStateChanged: true )
-         ProcessEvent(  "Output Status AC" ,   jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true)
-         ProcessEvent(  "Output Status DC" ,   jsonpl.data.quotaMap."pd.carSwitch", null, true )
+         ProcessEvent(  "battery" ,             jsonpl.data.quotaMap."bmsMaster.soc", "%", true) 
+         ProcessEvent(  "power" ,               jsonpl.data.quotaMap."inv.outputWatts", "W", true)
+         ProcessEvent(  "temperature" ,        (jsonpl.data.quotaMap."inv.outTemp" * mul + adder as int), tunit, true) 
+         ProcessEvent(  "Output Status AC" ,    jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true)
+         ProcessEvent(  "Output Status DC" ,    jsonpl.data.quotaMap."pd.carSwitch", null, true )
          ProcessEvent(  "Output Status USB" , 0 , null, true)
-         ProcessEvent(  "Output Status LED" ,  jsonpl.data.quotaMap."pd.ledState", null, true)
-         ProcessEvent(  "Cycles on Master" ,   jsonpl.data.quotaMap."bmsMaster.cycles", null, true )
-         if (jsonpl.data.quotaMap."bmsSlave1.cycles" != null) ProcessEvent(  "Cycles on Slave" , jsonpl.data.quotaMap."bmsSlave1.cycles", null, true)
-         ProcessEvent(  "Fault Master Cell" ,  jsonpl.data.quotaMap."bmsMaster.bmsFault", null, true )
-         ProcessEvent(  "SOC Master Cell" ,    jsonpl.data.quotaMap."bmsMaster.soc", "%", true )
-         if (jsonpl.data.quotaMap."bmsSlave.soc" != null)       ProcessEvent(  "SOC Slave Cell" , jsonpl.data.quotaMap."bmsSlave.soc", "%", true  )
-         if (jsonpl.data.quotaMap."bmsSlave1.soc" != null)      ProcessEvent(  "SOC Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.soc", "%", true  )
-         if (jsonpl.data.quotaMap."bmsSlave2.soc" != null )     ProcessEvent(  "SOC Slave2 Cell" ,   jsonpl.data.quotaMap."bmsSlave2.soc", "%",  true ) 
-         ProcessEvent(  "Temp DC" ,            jsonpl.data.quotaMap."pd.carTemp"  * mul + adder,  tunit, true )
-         ProcessEvent(  "Temp Inverter Out" ,  jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true )
-         ProcessEvent(  "Temp Inverter In" ,   jsonpl.data.quotaMap."inv.inTemp" * mul + adder, tunit, true )
-         ProcessEvent(  "Temp Master Cell" ,   jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, tunit, true )
-         if (jsonpl.data.quotaMap."bmsSlave1.temp" != null )    ProcessEvent(  "Temp Slave Cell" ,  jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true ) 
-         if (jsonpl.data.quotaMap."bmsSlave2.temp" != null )    ProcessEvent(  "Temp Slave2 Cell" , jsonpl.data.quotaMap."bmsSlave2.temp" * mul + adder, tunit, true ) 
+         ProcessEvent(  "Output Status LED" ,   jsonpl.data.quotaMap."pd.ledState", null, true)
+         ProcessEvent(  "Cycles on Master" ,    jsonpl.data.quotaMap."bmsMaster.cycles", null, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.cycles" != null)     ProcessEvent(  "Cycles on Slave1" , jsonpl.data.quotaMap."bmsSlave1.cycles", null, true)
+         if (jsonpl.data.quotaMap."bmsSlave.cycles"  != null)     ProcessEvent(  "Cycles on Slave1" , jsonpl.data.quotaMap."bmsSlave.cycles", null, true)   
+         ProcessEvent(  "Fault Master Cell" ,   jsonpl.data.quotaMap."bmsMaster.bmsFault", null, true )
+         ProcessEvent(  "SOC Master Cell" ,     jsonpl.data.quotaMap."bmsMaster.soc", "%", true )
+         if (jsonpl.data.quotaMap."bmsSlave.soc"  != null)       ProcessEvent(  "SOC Slave1 Cell" , jsonpl.data.quotaMap."bmsSlave.soc", "%", true  )
+         if (jsonpl.data.quotaMap."bmsSlave1.soc" != null)       ProcessEvent(  "SOC Slave1 Cell" , jsonpl.data.quotaMap."bmsSlave1.soc", "%", true  )
+         ProcessEvent(  "Temp DC" ,            (jsonpl.data.quotaMap."pd.carTemp"  * mul + adder as int),  tunit, true )
+         ProcessEvent(  "Temp Inverter Out" ,  (jsonpl.data.quotaMap."inv.outTemp" * mul + adder as int), tunit, true )
+         ProcessEvent(  "Temp Inverter In" ,   (jsonpl.data.quotaMap."inv.inTemp" * mul + adder as int), tunit, true )
+         ProcessEvent(  "Temp Master Cell" ,   (jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder as int) , tunit, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.temp" != null )     ProcessEvent(  "Temp Slave1 Cell" , (jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder as int), tunit, true ) 
          ProcessEvent( "Time Remain" ,         jsonpl.data.quotaMap."pd.remainTime", "mins", true )
          ProcessEvent( "Watts DC Out" ,        jsonpl.data.quotaMap."pd.carWatts", "W", true )
          ProcessEvent( "Watts DC In" ,         jsonpl.data.quotaMap."pd.chgPowerDC", "W", true )  
@@ -341,52 +351,61 @@ def parse(String description) {
          LEDOutput_Enabled = null
          XBoost_Enabled    = jsonpl.data.quotaMap."mppt.cfgAcXboost"
          AcAlways_Enabled  = jsonpl.data.quotaMap."inv.acPassByAutoEn"
-         sendEvent(name: "battery" , value:   jsonpl.data.quotaMap."bmsMaster.soc", unit: "%", isStateChanged: true )
-         sendEvent (name: "power" , value:    jsonpl.data.quotaMap."inv.outputWatts", unit: "W", isStateChanged: true )
-         Integer ttemp = jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder 
-         sendEvent(name: "temperature", value: ttemp, unit: tunit, isStateChanged: true ) 
+         ProcessEvent(  "temperature" ,      (jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder as int), tunit, true ) 
+         ProcessEvent(  "battery" ,           jsonpl.data.quotaMap."bmsMaster.soc", "%",  true )
+         ProcessEvent(  "power" ,             jsonpl.data.quotaMap."inv.inputWatts", "W", true ) 
          ProcessEvent(  "Output Status AC" ,  jsonpl.data.quotaMap."inv.cfgAcEnabled", null, true )
          ProcessEvent(  "Output Status DC" ,  jsonpl.data.quotaMap."mppt.carState", null, true  )
          ProcessEvent(  "Output Status USB" , 0 , null, true )
          ProcessEvent(  "Output Status LED" , 0 , null, true )
          ProcessEvent(  "Output AC Always" ,  jsonpl.data.quotaMap."inv.acPassByAutoEn", null, true)
          ProcessEvent(  "Cycles on Master" ,  jsonpl.data.quotaMap."bmsMaster.cycles", null, true )
-         if (jsonpl.data.quotaMap."bmsSlave1.cycles" != null)   ProcessEvent(  "Cycles on Slave" ,   jsonpl.data.quotaMap."bmsSlave1.cycles", null, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.cycles" != null)    ProcessEvent(  "Cycles on Slave1" , jsonpl.data.quotaMap."bmsSlave1.cycles", null, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.cycles" == null)    ProcessEvent(  "Cycles on Slave1" , 0, null, true ) 
+         if (jsonpl.data.quotaMap."bmsSlave2.cycles" != null)    ProcessEvent(  "Cycles on Slave2" , jsonpl.data.quotaMap."bmsSlave2.cycles", null, true ) 
+         if (jsonpl.data.quotaMap."bmsSlave2.cycles" == null)    ProcessEvent(  "Cycles on Slave2" , 0, null, true )  
          ProcessEvent(  "Fault Code mppt" ,   jsonpl.data.quotaMap."mppt.faultCode", null, true )
          ProcessEvent(  "Fault Master Cell" , jsonpl.data.quotaMap."bmsMaster.bmsFault", null, true )
-         if (jsonpl.data.quotaMap."bmsSlave1.cycles" != null)   ProcessEvent(  "Fault Slave Cell" ,  jsonpl.data.quotaMap."bmsSlave1.bmsFault", null, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.bmsFault" != null)  ProcessEvent(  "Fault Slave1 Cell" , jsonpl.data.quotaMap."bmsSlave1.bmsFault", null, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.bmsFault" == null)  ProcessEvent(  "Fault Slave1 Cell" , 0 , null, true )   
+         if (jsonpl.data.quotaMap."bmsSlave2.bmsFault" != null)  ProcessEvent(  "Fault Slave2 Cell" , jsonpl.data.quotaMap."bmsSlave2.bmsFault", null, true )
+         if (jsonpl.data.quotaMap."bmsSlave2.bmsFault" == null)  ProcessEvent(  "Fault Slave2 Cell" , 0, null, true )   
          ProcessEvent(  "SOC Master Cell" ,   jsonpl.data.quotaMap."bmsMaster.soc", "%",  true )
-         //ProcessEvent(  "SOC Master Display" , jsonpl.data.quotaMap."bmsMaster.fShowSoc", "%",  true )
-         if (jsonpl.data.quotaMap."bms_slave.soc" != null)      ProcessEvent( "SOC Slave Cell" ,     jsonpl.data.quotaMap."bms_slave.soc", "%", true  )
-         if (jsonpl.data.quotaMap."bmsSlave1.soc" != null )     ProcessEvent(  "SOC Slave Cell" ,    jsonpl.data.quotaMap."bmsSlave1.soc", "%",  true )
-         if (jsonpl.data.quotaMap."bmsSlave2.soc" != null )     ProcessEvent(  "SOC Slave2 Cell" ,   jsonpl.data.quotaMap."bmsSlave2.soc", "%",  true ) 
-         //if (jsonpl.data.quotaMap."bmsSlave2.f32ShowSoc"!= null)   ProcessEvent(  "SOC Slave Display" , jsonpl.data.quotaMap."bmsSlave2.f32ShowSoc",  "%", true )
-         ProcessEvent(  "Temp DC" ,           jsonpl.data.quotaMap."pd.carTemp"  * mul + adder, tunit, true )
-         ProcessEvent(  "Temp Inverter" ,     jsonpl.data.quotaMap."inv.outTemp" * mul + adder, tunit, true )
-         ProcessEvent(  "Temp Master Cell" ,   jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder, tunit, true )
-         if (jsonpl.data.quotaMap."bmsSlave1.temp" != null )    ProcessEvent(  "Temp Slave Cell" ,  jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true ) 
-         if (jsonpl.data.quotaMap."bmsSlave2.temp" != null )    ProcessEvent(  "Temp Slave2 Cell" , jsonpl.data.quotaMap."bmsSlave2.temp" * mul + adder, tunit, true ) 
-         ProcessEvent(  "Temp Mppt" ,         jsonpl.data.quotaMap."mppt.mpptTemp" * mul + adder, tunit, true )
-         if (jsonpl.data.quotaMap."bmsSlave1.temp" != null)         ProcessEvent(  "Temp Slave Cell" , jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder, tunit, true )
-         ProcessEvent( "Time Remain" ,        jsonpl.data.quotaMap."pd.remainTime", "mins", true )
+         if (jsonpl.data.quotaMap."bmsSlave1.soc" != null)       ProcessEvent(  "SOC Slave1 Cell" ,     jsonpl.data.quotaMap."bmsSlave1.soc", "%",  true )
+         if (jsonpl.data.quotaMap."bmsSlave1.soc" == null)       ProcessEvent(  "SOC Slave1 Cell" ,     0, "%",  true )   
+         if (jsonpl.data.quotaMap."bmsSlave2.soc" != null)       ProcessEvent(  "SOC Slave2 Cell" ,     jsonpl.data.quotaMap."bmsSlave2.soc", "%",  true )
+         if (jsonpl.data.quotaMap."bmsSlave2.soc" == null)       ProcessEvent(  "SOC Slave2 Cell" ,     0, "%",  true )   
+         ProcessEvent(  "Temp DC" ,           (jsonpl.data.quotaMap."pd.carTemp"  * mul + adder as int), tunit, true )
+         ProcessEvent(  "Temp Inverter" ,     (jsonpl.data.quotaMap."inv.outTemp" * mul + adder as int), tunit, true )
+         ProcessEvent(  "Temp Master Cell" ,  (jsonpl.data.quotaMap."bmsMaster.temp" * mul + adder as int), tunit, true )
+         ProcessEvent(  "Temp Mppt" ,         (jsonpl.data.quotaMap."mppt.mpptTemp" * mul + adder as int), tunit, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.temp" != null)     ProcessEvent(  "Temp Slave1 Cell" , (jsonpl.data.quotaMap."bmsSlave1.temp" * mul + adder as int), tunit, true )
+         if (jsonpl.data.quotaMap."bmsSlave1.temp" == null)     ProcessEvent(  "Temp Slave1 Cell" , "N/A", tunit, true ) 
+         if (jsonpl.data.quotaMap."bmsSlave2.temp" != null)     ProcessEvent(  "Temp Slave2 Cell" , (jsonpl.data.quotaMap."bmsSlave2.temp" * mul + adder as int), tunit, true )
+         if (jsonpl.data.quotaMap."bmsSlave2.temp" == null)     ProcessEvent(  "Temp Slave2 Cell" , "N/A", tunit, true )   
+         ProcessEvent(  "Time Remain" ,       jsonpl.data.quotaMap."pd.remainTime", "mins", true )
          ProcessEvent(  "Watts DC Out" ,      jsonpl.data.quotaMap."pd.carWatts", "W", true )
-         ProcessEvent( "Watts DC In" ,        jsonpl.data.quotaMap."mppt.inWatts",  null, true )  
+         ProcessEvent(  "Watt DC In" ,        jsonpl.data.quotaMap."mppt.inWatts",  null, true )  
          ProcessEvent(  "Watts AC In" ,       jsonpl.data.quotaMap."inv.inputWatts", "W", true )
          ProcessEvent(  "Watts AC Out" ,      jsonpl.data.quotaMap."inv.outputWatts", "W", true )
-         if (jsonpl.data.quotaMap."bmsSlave1.inputWatts" != null )  ProcessEvent(  "Watts Slave In" , jsonpl.data.quotaMap."bmsSlave1.inputWatts", "W", true )
-         if (jsonpl.data.quotaMap."bmsSlave1.outputWatts" != null ) ProcessEvent(  "Watts Slave Out" , jsonpl.data.quotaMap."bmsSlave1.outputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bmsSlave1.inputWatts"  != null ) ProcessEvent(  "Watts Slave1 In" , jsonpl.data.quotaMap."bmsSlave1.inputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bmsSlave1.inputWatts"  == null ) ProcessEvent(  "Watts Slave1 In" , 0, "W", true )   
+         if (jsonpl.data.quotaMap."bmsSlave1.outputWatts" != null ) ProcessEvent(  "Watts Slave1 Out", jsonpl.data.quotaMap."bmsSlave1.outputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bmsSlave1.outputWatts" == null ) ProcessEvent(  "Watts Slave1 Out", 0, "W", true )   
+         if (jsonpl.data.quotaMap."bmsSlave2.inputWatts"  != null ) ProcessEvent(  "Watts Slave2 In" , jsonpl.data.quotaMap."bmsSlave2.inputWatts", "W", true )
+         if (jsonpl.data.quotaMap."bmsSlave2.inputWatts"  == null ) ProcessEvent(  "Watts Slave2 In" , 0, "W", true )   
+         if (jsonpl.data.quotaMap."bmsSlave2.outputWatts" != null ) ProcessEvent(  "Watts Slave2 Out", jsonpl.data.quotaMap."bmsSlave2.outputWatts", "W", true ) 
+         if (jsonpl.data.quotaMap."bmsSlave2.outputWatts" == null ) ProcessEvent(  "Watts Slave2 Out", 0, "W", true )    
          ProcessEvent( "Limit Charging Rate" ,jsonpl.data.quotaMap."inv.cfgSlowChgWatts", "%", true )
-         ProcessEvent( "Limit Discharge" ,    jsonpl.data.quotaMap."bms_emsStatus.minDsgSoc", "%", true )
-         ProcessEvent( "Limit Charge" ,       jsonpl.data.quotaMap."bms_emsStatus.maxChargeSoc", "%", true )
-         if (jsonpl.data.quotaMap."bms_emsStatus.minOpenOilEb" != null )   ProcessEvent( "SmartGen On Point" ,  jsonpl.data.quotaMap."bms_emsStatus.minOpenOilEb", "%", true )
-         if (jsonpl.data.quotaMap."bms_emsStatus.maxCloseOilEb" != null )  ProcessEvent( "SmartGen Off Point" , jsonpl.data.quotaMap."bms_emsStatus.maxCloseOilEb", "%", true )
-         if (jsonpl.data.quotaMap."ems.minOpenOilEbSoc" != null )          ProcessEvent( "SmartGen On Point" ,  jsonpl.data.quotaMap."ems.minOpenOilEbSoc", "%", true )
-         if (jsonpl.data.quotaMap."ems.maxCloseOilEbSoc" != null )         ProcessEvent( "SmartGen Off Point" , jsonpl.data.quotaMap."ems.maxCloseOilEbSoc", "%", true )
-         ProcessEvent( "Limit CarCharge Amps" , jsonpl.data.quotaMap."mppt.cfgDcChgCurrent" / 1000, "A", true )
-         ProcessEvent( "Output XBoost" ,       jsonpl.data.quotaMap."mppt.cfgAcXboost", null, true )
-         ProcessEvent( "TimeOut Unit" ,        jsonpl.data.quotaMap."pd.standByMode" / 60 , null, true )
-         ProcessEvent( "TimeOut Screen" ,      jsonpl.data.quotaMap."pd.lcdOffSec" / 60, null, true ) 
-         ProcessEvent( "Timeout AC Output" ,   jsonpl.data.quotaMap."inv.cfgStandbyMin" / 60, null, true )
+         ProcessEvent( "Limit Discharge" ,    jsonpl.data.quotaMap."ems.minDsgSoc", "%", true )
+         ProcessEvent( "Limit Charge" ,       jsonpl.data.quotaMap."ems.maxChargeSoc", "%", true )
+         ProcessEvent( "SmartGen On Point" ,  jsonpl.data.quotaMap."ems.minOpenOilEbSoc", "%", true )
+         ProcessEvent( "SmartGen Off Point" , jsonpl.data.quotaMap."ems.maxCloseOilEbSoc", "%", true )     
+         ProcessEvent( "Limit CarCharge Amps",jsonpl.data.quotaMap."mppt.cfgDcChgCurrent" / 1000, "A", true )
+         ProcessEvent( "Output XBoost" ,      jsonpl.data.quotaMap."inv.cfgAcXboost", null, true )
+         ProcessEvent( "TimeOut Unit" ,       jsonpl.data.quotaMap."pd.standByMode" / 60 , null, true )
+         ProcessEvent( "TimeOut Screen" ,     jsonpl.data.quotaMap."pd.lcdOffSec" / 60, null, true ) 
+         ProcessEvent( "Timeout AC Output" ,  jsonpl.data.quotaMap."inv.cfgStandbyMin" / 60, null, true )
          break
       default:
         DCOutput_Enabled  = null
@@ -513,6 +532,7 @@ def parse(String description) {
 // set-up to bypass energy calculation on manual scans
 def ManualRefreshData() {
   state.ManRefreshActive = 1 
+  state.reload = 0
   refreshdata()
 }
 
@@ -629,6 +649,7 @@ def initialize() {
   state.tbs = "00:00"
   state.firstrun = 0
   log.info "reset initialize flag=" + state.reloadData
+  state.retry = 15
   mqttConnect()
 }
 
@@ -661,13 +682,22 @@ def mqttConnect() {
     interfaces.mqtt.subscribe(settings?.topicSub)
     sendEvent(name: "mqtt Status", value: "1", isStateChanged: true)
     state.mqttOnline = 1
+    state.retry = 10
     refreshdata()  
     } catch (e) {
       sendEvent(name: "mqtt Status", value: "0", isStateChanged: true)
       state.mqttOnline = 0      
       log.info "MQTTconnect() -reports error: ${e.message}"
-      runIn(state.SetUpdateTime, mqttConnect)  
-   }
+      if (state.retry == null) state.retry = 10
+      state.retry = state.retry - 1
+      if ( state.retry > 0 ) {
+        log.info "MQTT offline - ${state.retry} - 1 min reconnect attempts before duration increase"
+        runIn(60, mqttConnect)  
+      }else{
+        log.info "MQTT offline - retry interval set to 30 min" 
+        runIn(900, mqttConnect)
+    }
+  }
 }
 
 def mqttClientStatus(String status) {
@@ -680,7 +710,7 @@ def mqttClientStatus(String status) {
     sendEvent(name: "mqtt Status", value: "0", isStateChanged: true)
     state.mqttOnline = 0  
     if (logEnable) log.debug "Broker: ${status} Will restart in 15 seconds"
-    runIn(15, mqttConnect)
+    //runIn(15, mqttConnect)
   }
 }
 
@@ -935,13 +965,12 @@ void componentOff(cd) {
 // Process data to check against current state value and then send an event if it has changed
 // After 5 updates - update all attrubites to catch any misses - refresh count in refreshdata() block
 def ProcessEvent(Variable, Value, Unit = null, ForceEvent = false) {
-    Integer Vtemp = Value
-    if ((state."${ Variable }" != Vtemp) || (state.reload == 1 )) {
-       state."${ Variable }" = Vtemp
+  if ((state."${ Variable }" != Value) || (state.reload == 1 )) {
+    state."${ Variable }" = Value
       if (Unit != null) {
-        sendEvent(name: "${ Variable }", value: Vtemp, unit: Unit, isStateChanged: true)
+        sendEvent(name: "${ Variable }", value: Value, unit: Unit, isStateChanged: true)
       } else {
-        sendEvent(name: "${ Variable }", value: Vtemp, isStateChanged: true)
+        sendEvent(name: "${ Variable }", value: Value, isStateChanged: true)
       }
    }
 }
@@ -1232,10 +1261,10 @@ def EnergyCounter() {
   } else {
    state.newmonth = 0
   } 
-  ProcessEvent( "Energy AC in Total"  , state.ACinWattHrYt, "WHr", true )
-  ProcessEvent( "Energy AC out Total" , state.ACoutWattHrYt, "WHr", true )
-  ProcessEvent( "Energy DC in Total"  , state.DCinWattHrYt, "WHr", true )
-  ProcessEvent( "Energy DC out Total" , state.DCoutWattHrYt, "WHr", true )
+  ProcessEvent( "Energy AC in Total"  , (state.ACinWattHrYt  as int), "WHr", true )
+  ProcessEvent( "Energy AC out Total" , (state.ACoutWattHrYt as int), "WHr", true )
+  ProcessEvent( "Energy DC in Total"  , (state.DCinWattHrYt  as int), "WHr", true )
+  ProcessEvent( "Energy DC out Total" , (state.DCoutWattHrYt as int), "WHr", true )
   if (state.engmondate != state.englastreset ) {
      sendEvent(name: "Energy Reset Timestamp", value: state.engmondate, isStateChanged: true )  
      state.englastreset = state.engmondate
@@ -1256,6 +1285,3 @@ def EnergyCounter() {
   }
  }
 }
-
-
-
